@@ -32,6 +32,7 @@ interface AuditData {
 interface ChartData {
   name: string;
   value: number;
+  [key: string]: string | number;
 }
 
 // Custom label function dengan proper typing
@@ -71,11 +72,10 @@ export default function DonutChart() {
           barangCount[namaBarang] = (barangCount[namaBarang] || 0) + 1;
         });
 
-        // Convert ke format chart data dan urutkan berdasarkan frequency
         const chartData: ChartData[] = Object.entries(barangCount)
           .map(([name, value]) => ({ name, value }))
           .sort((a, b) => b.value - a.value) // Sort descending by frequency
-          .slice(0, 8); // Ambil maksimal 8 barang teratas
+          .slice(0, 8);
 
         setChartData(chartData);
       } else {
