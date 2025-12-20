@@ -15,222 +15,158 @@ import {
   Package,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Barang } from "@/utils/types";
+import { SubkategoriAset } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import {
-  createBarang,
-  deleteBarang,
-  updateBarang,
-} from "@/lib/api/product/route";
+  createSubkategori,
+  deleteSubkategori,
+  updateSubkategori,
+  getSubkategoriByKategori,
+  getKategoriInfo,
+  CreateSubkategoriData,
+  UpdateSubkategoriData,
+} from "@/lib/api/subkategori/route";
 import DeleteConfirmationModal from "@/components/core/Delete.Modal";
-import EditBarangModal from "@/components/core/EditBarangModal";
+import EditSubkategoriModal from "@/components/core/EditSubkategoriModal";
 import { useUser } from "@/context/UserContext";
-import { useQRCode } from "next-qrcode";
 import { useParams, useRouter } from "next/navigation";
-import z from "zod";
-import CreateBarangModal from "@/components/core/CreateBarangModal";
+import CreateSubkategoriModal from "@/components/core/CreateSubkategoriModal";
 
 interface CategoryInfo {
   id: number;
-  kategori: string;
+  nama_kategori: string;
   status: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-interface CategoryProductsResponse {
-  data: Barang[];
-  category: CategoryInfo;
-}
-
-const barangFormSchema = z.object({
-  kategori_id: z.number(),
-  created_by: z.number(),
-  produk: z.string(),
-  production_date: z.string(),
-  stock: z.number(),
-  kodegrp: z.string(),
-  status: z.string(),
-  line_divisi: z.number(),
-  main_produk: z.number(),
-});
-
-type BarangFormSchema = z.infer<typeof barangFormSchema>;
-
-export default function CategoryProductsPage() {
+export default function CategorySubkategoriPage() {
   const params = useParams();
   const router = useRouter();
   const categoryId = params.id as string;
 
-  const [datas, setData] = useState<Barang[]>([]);
+  const [datas, setData] = useState<SubkategoriAset[]>([]);
   const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("-");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [barangIdToDelete, setBarangIdToDelete] = useState<Barang | null>(null);
+  const [subkategoriIdToDelete, setSubkategoriIdToDelete] =
+    useState<SubkategoriAset | null>(null);
   const [perPage] = useState(5);
-  const [filteredData, setFilteredData] = useState<Barang[]>([]);
+  const [filteredData, setFilteredData] = useState<SubkategoriAset[]>([]);
   const [deleteModal, setDeleteModal] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [barangToEdit, setBarangToEdit] = useState<any>();
+  const [subkategoriToEdit, setSubkategoriToEdit] =
+    useState<SubkategoriAset | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { user } = useUser();
-  const { Canvas } = useQRCode();
 
   // Hitung statistik berdasarkan data
-  const totalBarang = datas.length;
-  const activeBarang = datas.filter((b) => b.status === "active").length;
-  const unActiveBarang = datas.filter((b) => b.status === "un-active").length;
-  const activePercentage = totalBarang
-    ? ((activeBarang / totalBarang) * 100).toFixed(2)
+  const totalSubkategori = datas.length;
+  const activeSubkategori = datas.filter((s) => s.status === "aktif").length;
+  const unActiveSubkategori = datas.filter(
+    (s) => s.status === "tidak_aktif"
+  ).length;
+  const activePercentage = totalSubkategori
+    ? ((activeSubkategori / totalSubkategori) * 100).toFixed(2)
     : 0;
 
-  const fetchCategoryProducts = async () => {
+  const fetchCategorySubkategori = async () => {
     try {
       setIsLoading(true);
 
-      // Request ke endpoint kategori
-      const response = await axiosInstance.get(
-        `/api/v1/kategori/${categoryId}`
-      );
+      const subkategoriResponse = await getSubkategoriByKategori(categoryId);
 
-      // Debug: Cek struktur response (hapus setelah selesai debug)
+      setData(subkategoriResponse || []);
 
-      // Set data barang - handle jika data kosong atau undefined
-      if (response.data.data && Array.isArray(response.data.data)) {
-        setData(response.data.data);
-      } else {
-        setData([]);
-      }
+      if (subkategoriResponse.length > 0) {
+        const kategori = subkategoriResponse[0].kategori_aset;
 
-      // Set category info dengan berbagai kemungkinan struktur response
-      let categoryData = null;
-
-      // Kemungkinan 1: API mengembalikan info kategori terpisah
-      if (response.data.category) {
-        categoryData = response.data.category;
-      }
-      // Kemungkinan 2: Info kategori ada di level root response
-      else if (response.data.kategori) {
-        categoryData = {
-          id: response.data.id,
-          kategori: response.data.kategori,
-          status: response.data.status,
-          createdAt: response.data.createdAt,
-          updatedAt: response.data.updatedAt,
-        };
-      }
-      // Kemungkinan 3: Ambil dari barang pertama jika ada
-      else if (
-        response.data.data &&
-        response.data.data.length > 0 &&
-        response.data.data[0].kategori
-      ) {
-        categoryData = response.data.data[0].kategori;
-      }
-      // Kemungkinan 4: Jika tidak ada info kategori sama sekali, buat request terpisah
-      else {
-        try {
-          // Coba request terpisah untuk info kategori (sesuaikan endpoint)
-          const categoryResponse = await axiosInstance.get(
-            `/api/v1/kategori/info/${categoryId}`
-          );
-          categoryData = categoryResponse.data.data || categoryResponse.data;
-        } catch (categoryError) {
-          console.warn(
-            "Gagal mengambil info kategori terpisah:",
-            categoryError
-          );
-
-          // Fallback: Set info kategori minimal
-          categoryData = {
-            id: parseInt(categoryId),
-            kategori: `Kategori ${categoryId}`,
-            status: "aktif",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+        if (kategori) {
+          setCategoryInfo({
+            id: kategori.id,
+            nama_kategori: kategori.nama_kategori,
+            status: kategori.status,
+            created_at: (kategori as any).created_at,
+            updated_at: (kategori as any).updated_at,
+          });
         }
       }
-
-      // Set category info ke state
-      if (categoryData) {
-        setCategoryInfo(categoryData);
-      }
     } catch (error) {
-      toast.error("Gagal memuat data barang kategori");
-
-      // Set data kosong saat error
+      console.error("Error fetching data:", error);
+      toast.error("Gagal memuat data subkategori");
       setData([]);
-
-      // Set category info default saat error
-      setCategoryInfo({
-        id: parseInt(categoryId),
-        kategori: "Error memuat kategori",
-        status: "error",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      setCategoryInfo(null);
     } finally {
       setIsLoading(false);
     }
   };
-  const handleCreateBarang = async (newBarang: BarangFormSchema) => {
+
+  const handleCreateSubkategori = async (
+    newSubkategori: CreateSubkategoriData
+  ) => {
     try {
-      await createBarang(newBarang);
-      toast.success("Berhasil menambahkan barang");
-      fetchCategoryProducts();
+      await createSubkategori(newSubkategori);
+      toast.success("Berhasil menambahkan subkategori");
+      fetchCategorySubkategori();
       setIsModalOpen(false);
     } catch (error) {
-      toast.error("Gagal menambahkan barang");
+      console.error("Error creating subkategori:", error);
+      toast.error("Gagal menambahkan subkategori");
     }
   };
 
-  const handleUpdateBarang = async (updatedData: any) => {
-    if (!barangToEdit || !barangToEdit.id) {
-      toast.error("ID barang tidak ditemukan");
+  const handleUpdateSubkategori = async (
+    updatedData: UpdateSubkategoriData
+  ) => {
+    if (!subkategoriToEdit || !subkategoriToEdit.id) {
+      toast.error("ID subkategori tidak ditemukan");
       return;
     }
 
     try {
-      await updateBarang(barangToEdit.id, updatedData);
-      toast.success("Barang berhasil diperbarui");
+      await updateSubkategori(subkategoriToEdit.id, updatedData);
+      toast.success("Subkategori berhasil diperbarui");
       setIsEditModalOpen(false);
-      setBarangToEdit(null);
-      await fetchCategoryProducts();
+      setSubkategoriToEdit(null);
+      await fetchCategorySubkategori();
     } catch (error) {
-      toast.error("Gagal memperbarui barang");
+      console.error("Error updating subkategori:", error);
+      toast.error("Gagal memperbarui subkategori");
     }
   };
 
-  const handleEditBarangClick = (barang: Barang) => {
-    setBarangToEdit(barang);
+  const handleEditSubkategoriClick = (subkategori: SubkategoriAset) => {
+    setSubkategoriToEdit(subkategori);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteIdBarang = async (barang: Barang) => {
-    setBarangIdToDelete(barang);
+  const handleDeleteIdSubkategori = async (subkategori: SubkategoriAset) => {
+    setSubkategoriIdToDelete(subkategori);
     setDeleteModal(true);
   };
 
-  const handleDeleteBarang = async (id: number) => {
+  const handleDeleteSubkategori = async (id: number) => {
     try {
-      await deleteBarang(id);
-      toast.success("Berhasil menghapus barang");
+      await deleteSubkategori(id);
+      toast.success("Berhasil menghapus subkategori");
       setDeleteModal(false);
-      fetchCategoryProducts();
-    } catch (error) {
-      toast.error("Gagal menghapus barang");
+      fetchCategorySubkategori();
+    } catch (error: any) {
+      console.error("Error deleting subkategori:", error);
+      const errorMessage =
+        error.response?.data?.message || "Gagal menghapus subkategori";
+      toast.error(errorMessage);
     }
   };
 
   useEffect(() => {
     if (categoryId) {
-      fetchCategoryProducts();
+      fetchCategorySubkategori();
     }
   }, [categoryId]);
 
@@ -247,10 +183,13 @@ export default function CategoryProductsPage() {
     if (searchTerm.trim() !== "") {
       filtered = filtered.filter(
         (data) =>
-          data.namaBarang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.kodeQr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.kodeGrp?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.createdBy?.name.toLowerCase().includes(searchTerm.toLowerCase())
+          data.nama_subkategori
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          data.kode_subkategori
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          data.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -309,7 +248,7 @@ export default function CategoryProductsPage() {
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-primary">
-                  Barang Kategori: {categoryInfo?.kategori || "Loading..."}
+                  Subkategori: {categoryInfo?.nama_kategori || "Loading..."}
                 </h1>
                 <p className="mt-2 text-gray-600">
                   Status Kategori:
@@ -332,7 +271,7 @@ export default function CategoryProductsPage() {
               onClick={() => setIsModalOpen(true)}
               className="px-4 py-2 bg-primary text-white rounded-md cursor-pointer"
             >
-              Tambah Barang +
+              Tambah Subkategori +
             </button>
           </div>
         </div>
@@ -361,10 +300,10 @@ export default function CategoryProductsPage() {
               <div className="flex justify-between">
                 <div>
                   <h3 className="text-text font-medium text-sm">
-                    Total Barang
+                    Total Subkategori
                   </h3>
                   <p className="text-text font-medium text-xl pt-2.5">
-                    {totalBarang}
+                    {totalSubkategori}
                   </p>
                 </div>
                 <div className="bg-primary p-4 rounded-sm text-background">
@@ -377,10 +316,10 @@ export default function CategoryProductsPage() {
               <div className="flex justify-between">
                 <div>
                   <h3 className="text-text font-medium text-sm">
-                    Barang Aktif
+                    Subkategori Aktif
                   </h3>
                   <p className="text-text font-medium text-xl pt-2.5">
-                    {activeBarang}
+                    {activeSubkategori}
                   </p>
                 </div>
                 <div className="bg-primary p-4 rounded-sm text-background">
@@ -393,10 +332,10 @@ export default function CategoryProductsPage() {
               <div className="flex justify-between">
                 <div>
                   <h3 className="text-text font-medium text-sm">
-                    Barang Non Aktif
+                    Subkategori Non Aktif
                   </h3>
                   <p className="text-text font-medium text-xl pt-2.5">
-                    {unActiveBarang}
+                    {unActiveSubkategori}
                   </p>
                 </div>
                 <div className="bg-primary p-4 rounded-sm text-background">
@@ -437,8 +376,8 @@ export default function CategoryProductsPage() {
             className="border border-secondary px-3 sm:px-4 py-2 rounded-sm text-text font-medium text-sm"
           >
             <option value="-">Semua Status</option>
-            <option value="active">Aktif</option>
-            <option value="un-active">Non-aktif</option>
+            <option value="aktif">Aktif</option>
+            <option value="tidak_aktif">Tidak Aktif</option>
           </select>
         </div>
 
@@ -449,7 +388,7 @@ export default function CategoryProductsPage() {
             id="search"
             value={searchTerm}
             onChange={handleSearchChange}
-            placeholder="Cari nama barang, kode QR, atau pembuat..."
+            placeholder="Cari nama subkategori, kode, atau deskripsi..."
             className="border border-secondary px-3 sm:px-4 py-2 rounded-sm font-medium text-sm flex-1"
           />
           <button
@@ -465,7 +404,7 @@ export default function CategoryProductsPage() {
       <div className="bg-white border border-secondary rounded-lg mx-2 sm:mx-6 mb-6">
         <div className="flex justify-between items-center mx-4 sm:mx-6 py-6">
           <h2 className="font-medium text-text text-2xl">
-            Data Barang - {categoryInfo?.kategori}
+            Data Subkategori - {categoryInfo?.nama_kategori}
           </h2>
           <div className="flex items-center gap-3">
             <button className="bg-secondary text-white p-2 rounded-sm hover:bg-secondary/90">
@@ -482,25 +421,19 @@ export default function CategoryProductsPage() {
             <thead className="bg-text/15">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  NAMA BARANG
+                  KODE SUBKATEGORI
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  KODEGRP
+                  NAMA SUBKATEGORI
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  DIVISI
-                </th>
-                <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  DIBUAT OLEH
+                  DESKRIPSI
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
                   STATUS
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  STOCK
-                </th>
-                <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  KODE QR
+                  TANGGAL DIBUAT
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
                   AKSI
@@ -514,7 +447,7 @@ export default function CategoryProductsPage() {
                     key={`skeleton-${index}`}
                     className="bg-background border-y border-secondary animate-pulse"
                   >
-                    {Array.from({ length: 8 }).map((_, colIndex) => (
+                    {Array.from({ length: 6 }).map((_, colIndex) => (
                       <td key={colIndex} className="px-4 sm:px-6 py-4">
                         <div className="h-4 bg-gray-300 rounded-md w-20 mx-auto"></div>
                       </td>
@@ -524,7 +457,7 @@ export default function CategoryProductsPage() {
               ) : currentItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={6}
                     className="px-4 sm:px-6 py-8 text-center text-text"
                   >
                     {filteredData.length === 0 && datas.length > 0 ? (
@@ -535,18 +468,11 @@ export default function CategoryProductsPage() {
                           <Package className="w-6 h-6 text-gray-400" />
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          Belum ada barang pada category ini
+                          Belum ada subkategori pada kategori ini
                         </h3>
                         <p className="text-gray-600 mb-4">
-                          Data barang sesuai kategori akan tampil di sini
+                          Data subkategori sesuai kategori akan tampil di sini
                         </p>
-                        {/* <button
-                          onClick={() => handleStockIn(product)}
-                          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Tambah Stock Pertama
-                        </button> */}
                       </div>
                     )}
                   </td>
@@ -558,83 +484,55 @@ export default function CategoryProductsPage() {
                     className="bg-background text-sm font-medium text-text text-center border-y border-secondary"
                   >
                     <td className="px-4 sm:px-6 py-4 uppercase whitespace-nowrap">
-                      {data.namaBarang}
+                      {data.kode_subkategori}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.kodeGrp}
+                      {data.nama_subkategori}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.divisi?.divisi || data.lineDivisi?.divisi || "—"}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col items-center">
-                        <span className="font-medium">
-                          {data.createdBy?.name || "—"}
-                        </span>
-                        {data.createdBy?.jabatan?.name && (
-                          <span className="text-xs text-gray-500">
-                            {data.createdBy.jabatan.name}
-                          </span>
-                        )}
-                      </div>
+                    <td className="px-4 sm:px-6 py-4 max-w-xs truncate">
+                      {data.deskripsi || "—"}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          data.status === "active"
+                          data.status === "aktif"
                             ? "bg-green-500 text-green-100 border border-green-800"
-                            : data.status === "un-active"
+                            : data.status === "tidak_aktif"
                             ? "bg-red-700 text-red-100 border border-red-800"
                             : "bg-gray-800/50 text-gray-300 border border-gray-700"
                         }`}
                       >
-                        {data.status === "active"
+                        {data.status === "aktif"
                           ? "Aktif"
-                          : data.status === "un-active"
-                          ? "Non-aktif"
+                          : data.status === "tidak_aktif"
+                          ? "Tidak Aktif"
                           : data.status}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs text-gray-500">Saat ini:</span>
-                        <span className="font-medium">
-                          {data.totalStock || 0}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex justify-center">
-                        <Canvas
-                          text={data.kodeQr}
-                          options={{
-                            errorCorrectionLevel: "M",
-                            margin: 2,
-                            scale: 3,
-                            width: 80,
-                          }}
-                        />
-                      </div>
+                      {new Date(data.created_at).toLocaleDateString("id-ID")}
                     </td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex gap-2.5 justify-center">
-                        <Link href={`/admin/products/detail/${data.id}`}>
-                          <button
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Lihat Detail"
-                          >
-                            <Eye />
-                          </button>
-                        </Link>
                         <button
-                          onClick={() => handleEditBarangClick(data)}
+                          onClick={() => handleEditSubkategoriClick(data)}
                           className="text-yellow-600 hover:text-yellow-800"
                           title="Edit"
                         >
                           <SquarePen />
                         </button>
+                        <Link
+                          href={`/admin/products?kategori_id=${categoryId}&subkategori_id=${data.id}`}
+                        >
+                          <button
+                            className="text-green-600 hover:text-green-800"
+                            title="Lihat Aset"
+                          >
+                            <Package />
+                          </button>
+                        </Link>
                         <button
-                          onClick={() => handleDeleteIdBarang(data)}
+                          onClick={() => handleDeleteIdSubkategori(data)}
                           className="text-red-600 hover:text-red-800"
                           title="Hapus"
                         >
@@ -655,7 +553,7 @@ export default function CategoryProductsPage() {
             <h3 className="text-sm sm:text-base">
               Menampilkan {indexOfFirstItem + 1}-
               {Math.min(indexOfLastItem, filteredData.length)} dari{" "}
-              {filteredData.length} barang
+              {filteredData.length} subkategori
             </h3>
           </div>
 
@@ -702,42 +600,35 @@ export default function CategoryProductsPage() {
       </div>
 
       {/* Modals */}
-      {deleteModal && barangIdToDelete && (
+      {deleteModal && subkategoriIdToDelete && (
         <DeleteConfirmationModal
           isOpen={deleteModal}
           onClose={() => setDeleteModal(false)}
-          itemName={barangIdToDelete.namaBarang}
-          onConfirm={() => handleDeleteBarang(barangIdToDelete.id)}
+          itemName={subkategoriIdToDelete.nama_subkategori}
+          onConfirm={() => handleDeleteSubkategori(subkategoriIdToDelete.id)}
         />
       )}
 
       {isModalOpen && (
-        <CreateBarangModal
+        <CreateSubkategoriModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          onSubmit={handleCreateBarang}
+          onSubmit={handleCreateSubkategori}
           categoryId={categoryId}
+          categoryName={categoryInfo?.nama_kategori}
         />
       )}
 
-      {isEditModalOpen && barangToEdit && (
-        <EditBarangModal
+      {isEditModalOpen && subkategoriToEdit && (
+        <EditSubkategoriModal
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
-            setBarangToEdit(null);
+            setSubkategoriToEdit(null);
           }}
-          onSubmit={handleUpdateBarang}
-          barang={{
-            id: barangToEdit.id,
-            kategori_id: barangToEdit.kategori?.id || barangToEdit.kategori_id,
-            user_id: user?.id,
-            produk: barangToEdit.namaBarang || barangToEdit.produk,
-            production_date:
-              barangToEdit.productionDate || barangToEdit.production_date,
-            kodegrp: barangToEdit.kodeGrp || "",
-            status: barangToEdit.status || "active",
-          }}
+          onSubmit={handleUpdateSubkategori}
+          subkategori={subkategoriToEdit}
+          categoryName={categoryInfo?.nama_kategori}
         />
       )}
     </>

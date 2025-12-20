@@ -39,7 +39,7 @@ export default function In() {
 
   // Mendapatkan daftar kategori unik untuk dropdown filter
   const uniqueCategories = Array.from(
-    new Set(datas.map((barang) => barang.kategori.kategori))
+    new Set(datas.map((barang) => barang.kategori.nama_kategori))
   ).filter(Boolean);
 
   const fetchBarang = async () => {
@@ -70,7 +70,7 @@ export default function In() {
     // Filter berdasarkan kategori
     if (categoryFilter !== "-") {
       filtered = filtered.filter(
-        (barang) => barang.kategori.kategori === categoryFilter
+        (barang) => barang.kategori.nama_kategori === categoryFilter
       );
     }
 
@@ -79,7 +79,7 @@ export default function In() {
       filtered = filtered.filter(
         (barang) =>
           barang.namaBarang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          barang.kategori.kategori
+          barang.kategori.nama_kategori
             .toLowerCase()
             .includes(searchTerm.toLowerCase())
       );
@@ -418,7 +418,7 @@ export default function In() {
                       {data.namaBarang}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.kategori.kategori}
+                      {data.kategori.nama_kategori}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       {data.totalStock}
@@ -517,28 +517,6 @@ export default function In() {
           </div>
         </div>
       </div>
-
-      {/* Stock In Modal */}
-      <StockInModal
-        isOpen={isStockInModalOpen}
-        onClose={() => {
-          setIsStockInModalOpen(false);
-          setSelectedBarangForStockIn(null);
-        }}
-        onSubmit={handleStockInSubmit}
-        barangData={selectedBarangForStockIn}
-      />
-
-      {/* Stock Out Modal */}
-      <StockOutModal
-        isOpen={isStockOutModalOpen}
-        onClose={() => {
-          setIsStockOutModalOpen(false);
-          setSelectedBarangForStockOut(null);
-        }}
-        onSubmit={handleStockOutSubmit}
-        barangData={selectedBarangForStockOut}
-      />
     </>
   );
 }
