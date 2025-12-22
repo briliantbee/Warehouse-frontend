@@ -20,6 +20,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
+import { useUser } from "../../context/UserContext";
 
 const asetFormSchema = z.object({
   kode_barang: z.string().min(1, "Kode barang wajib diisi"),
@@ -28,29 +29,38 @@ const asetFormSchema = z.object({
   kategori_aset_id: z.string().min(1, "Kategori wajib dipilih"),
   subkategori_aset_id: z.string().optional(),
   detail_kategori_aset_id: z.string().optional(),
-  merk: z.string().optional(),
-  tipe: z.string().optional(),
-  nomor_seri: z.string().optional(),
-  bahan: z.string().optional(),
-  ukuran: z.string().optional(),
-  spesifikasi_teknis: z.string().optional(),
-  tahun_perolehan: z.string().min(1, "Tahun perolehan wajib diisi"),
-  tanggal_perolehan: z.string().min(1, "Tanggal perolehan wajib diisi"),
+  spesifikasi: z.string().optional(),
+  jumlah: z.number().min(1, "Jumlah wajib diisi"),
+  satuan: z.string().min(1, "Satuan wajib diisi"),
+  tanggal_perolehan: z.string().optional(),
   nilai_perolehan: z.string().min(1, "Nilai perolehan wajib diisi"),
-  mata_uang_id: z.string().min(1, "Mata uang wajib dipilih"),
-  kondisi_fisik: z.string().min(1, "Kondisi fisik wajib dipilih"),
-  status: z.string().min(1, "Status wajib dipilih"),
-  lokasi_fisik: z.string().optional(),
+  mata_uang: z.string().min(1, "Mata uang wajib diisi"),
+  sumber_perolehan: z.enum([
+    "pembelian",
+    "hibah",
+    "tukar_menukar",
+    "penyertaan_modal",
+    "hasil_pembangunan",
+    "lainnya",
+  ]),
+  keterangan_sumber_perolehan: z.string().optional(),
   entitas_id: z.string().optional(),
   satker_id: z.string().optional(),
   unit_eselon_ii_id: z.string().optional(),
   penanggung_jawab_aset_id: z.string().optional(),
-  metode_penyusutan_id: z.string().optional(),
-  masa_manfaat: z.string().optional(),
+  unit_pemakai: z.string().optional(),
+  kondisi_fisik: z.enum(["baik", "rusak_ringan", "rusak_berat"]),
+  tanggal_mulai_digunakan: z.string().optional(),
+  umur_manfaat_bulan: z.string().optional(),
+  metode_penyusutan: z
+    .enum(["garis_lurus", "saldo_menurun", "tidak_disusutkan"])
+    .optional(),
   nilai_residu: z.string().optional(),
-  satuan_id: z.string().optional(),
-  jumlah: z.string().optional(),
-  keterangan: z.string().optional(),
+  lokasi_fisik: z.string().optional(),
+  ruangan: z.string().optional(),
+  kode_qr: z.string().optional(),
+  tag_rfid: z.string().optional(),
+  created_by: z.number(),
 });
 
 type AsetFormSchema = z.infer<typeof asetFormSchema>;
@@ -69,6 +79,8 @@ export default function CreateAssetModal({
   onClose: () => void;
   onSubmit: (data: AsetFormSchema) => void;
 }) {
+  const { user } = useUser();
+
   const form = useForm<AsetFormSchema>({
     resolver: zodResolver(asetFormSchema),
     defaultValues: {
@@ -78,29 +90,29 @@ export default function CreateAssetModal({
       kategori_aset_id: "",
       subkategori_aset_id: "",
       detail_kategori_aset_id: "",
-      merk: "",
-      tipe: "",
-      nomor_seri: "",
-      bahan: "",
-      ukuran: "",
-      spesifikasi_teknis: "",
-      tahun_perolehan: new Date().getFullYear().toString(),
+      spesifikasi: "",
+      jumlah: 1,
+      satuan: "",
       tanggal_perolehan: "",
       nilai_perolehan: "",
-      mata_uang_id: "",
-      kondisi_fisik: "baik",
-      status: "aktif",
-      lokasi_fisik: "",
+      mata_uang: "IDR",
+      sumber_perolehan: "pembelian",
+      keterangan_sumber_perolehan: "",
       entitas_id: "",
       satker_id: "",
       unit_eselon_ii_id: "",
       penanggung_jawab_aset_id: "",
-      metode_penyusutan_id: "",
-      masa_manfaat: "",
+      unit_pemakai: "",
+      kondisi_fisik: "baik",
+      tanggal_mulai_digunakan: "",
+      umur_manfaat_bulan: "",
+      metode_penyusutan: undefined,
       nilai_residu: "",
-      satuan_id: "",
-      jumlah: "1",
-      keterangan: "",
+      lokasi_fisik: "",
+      ruangan: "",
+      kode_qr: "",
+      tag_rfid: "",
+      created_by: user?.id || 0, // Menggunakan ID user yang login
     },
   });
 
@@ -116,15 +128,6 @@ export default function CreateAssetModal({
   const [penanggungJawabList, setPenanggungJawabList] = useState<
     DropdownOption[]
   >([]);
-  const [mataUangList, setMataUangList] = useState<DropdownOption[]>([]);
-  const [kondisiFisikList, setKondisiFisikList] = useState<DropdownOption[]>(
-    []
-  );
-  const [statusList, setStatusList] = useState<DropdownOption[]>([]);
-  const [metodePenyusutanList, setMetodePenyusutanList] = useState<
-    DropdownOption[]
-  >([]);
-  const [satuanList, setSatuanList] = useState<DropdownOption[]>([]);
 
   const [filteredSubkategori, setFilteredSubkategori] = useState<
     DropdownOption[]
@@ -147,11 +150,6 @@ export default function CreateAssetModal({
           satker,
           unitEselon,
           penanggungJawab,
-          mataUang,
-          kondisiFisik,
-          statusAset,
-          metodePenyusutan,
-          satuan,
         ] = await Promise.all([
           axiosInstance.get("/api/v1/dropdown/kategori-aset"),
           axiosInstance.get("/api/v1/dropdown/subkategori-aset"),
@@ -160,11 +158,6 @@ export default function CreateAssetModal({
           axiosInstance.get("/api/v1/dropdown/satker"),
           axiosInstance.get("/api/v1/dropdown/unit-eselon-ii"),
           axiosInstance.get("/api/v1/dropdown/penanggung-jawab-aset"),
-          axiosInstance.get("/api/v1/dropdown/mata-uang"),
-          axiosInstance.get("/api/v1/dropdown/kondisi-fisik"),
-          axiosInstance.get("/api/v1/dropdown/status-aset"),
-          axiosInstance.get("/api/v1/dropdown/metode-penyusutan"),
-          axiosInstance.get("/api/v1/dropdown/satuan"),
         ]);
 
         setKategoriList(kategori.data.data || []);
@@ -174,11 +167,6 @@ export default function CreateAssetModal({
         setSatkerList(satker.data.data || []);
         setUnitEselonList(unitEselon.data.data || []);
         setPenanggungJawabList(penanggungJawab.data.data || []);
-        setMataUangList(mataUang.data.data || []);
-        setKondisiFisikList(kondisiFisik.data.data || []);
-        setStatusList(statusAset.data.data || []);
-        setMetodePenyusutanList(metodePenyusutan.data.data || []);
-        setSatuanList(satuan.data.data || []);
       } catch (error) {
         console.error("Error fetching dropdowns:", error);
       }
@@ -376,110 +364,55 @@ export default function CreateAssetModal({
               </div>
             </div>
 
-            {/* Spesifikasi */}
+            {/* Spesifikasi & Kuantitas */}
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Wrench className="w-5 h-5" />
-                Spesifikasi
+                Spesifikasi & Kuantitas
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Merk
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Dell"
-                    {...form.register("merk")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipe
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Latitude 5420"
-                    {...form.register("tipe")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nomor Seri
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: SN123456789"
-                    {...form.register("nomor_seri")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bahan
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Plastik, Metal"
-                    {...form.register("bahan")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ukuran
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 14 inch"
-                    {...form.register("ukuran")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Satuan
-                  </label>
-                  <select
-                    {...form.register("satuan_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih Satuan</option>
-                    {satuanList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Jumlah
+                    Jumlah <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     placeholder="1"
-                    {...form.register("jumlah")}
+                    {...form.register("jumlah", { valueAsNumber: true })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {form.formState.errors.jumlah && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {form.formState.errors.jumlah.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Satuan <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Unit, Buah, Set"
+                    {...form.register("satuan")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {form.formState.errors.satuan && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {form.formState.errors.satuan.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Spesifikasi Teknis
+                    Spesifikasi
                   </label>
                   <textarea
                     rows={3}
                     placeholder="Contoh: Intel Core i5-1135G7, RAM 8GB, SSD 256GB"
-                    {...form.register("spesifikasi_teknis")}
+                    {...form.register("spesifikasi")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -495,35 +428,13 @@ export default function CreateAssetModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tahun Perolehan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="2024"
-                    {...form.register("tahun_perolehan")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {form.formState.errors.tahun_perolehan && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.tahun_perolehan.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal Perolehan <span className="text-red-500">*</span>
+                    Tanggal Perolehan
                   </label>
                   <input
                     type="date"
                     {...form.register("tanggal_perolehan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {form.formState.errors.tanggal_perolehan && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.tanggal_perolehan.message}
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -545,33 +456,57 @@ export default function CreateAssetModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mata Uang <span className="text-red-500">*</span>
+                    Mata Uang
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="IDR"
+                    {...form.register("mata_uang")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sumber Perolehan <span className="text-red-500">*</span>
                   </label>
                   <select
-                    {...form.register("mata_uang_id")}
+                    {...form.register("sumber_perolehan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Pilih Mata Uang</option>
-                    {mataUangList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
+                    <option value="pembelian">Pembelian</option>
+                    <option value="hibah">Hibah</option>
+                    <option value="tukar_menukar">Tukar Menukar</option>
+                    <option value="penyertaan_modal">Penyertaan Modal</option>
+                    <option value="hasil_pembangunan">Hasil Pembangunan</option>
+                    <option value="lainnya">Lainnya</option>
                   </select>
-                  {form.formState.errors.mata_uang_id && (
+                  {form.formState.errors.sumber_perolehan && (
                     <p className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.mata_uang_id.message}
+                      {form.formState.errors.sumber_perolehan.message}
                     </p>
                   )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Keterangan Sumber Perolehan
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Pembelian dari vendor XYZ"
+                    {...form.register("keterangan_sumber_perolehan")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Kondisi & Status */}
+            {/* Kondisi & Penggunaan */}
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Wrench className="w-5 h-5" />
-                Kondisi & Status
+                Kondisi & Penggunaan
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -582,11 +517,9 @@ export default function CreateAssetModal({
                     {...form.register("kondisi_fisik")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {kondisiFisikList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
+                    <option value="baik">Baik</option>
+                    <option value="rusak_ringan">Rusak Ringan</option>
+                    <option value="rusak_berat">Rusak Berat</option>
                   </select>
                   {form.formState.errors.kondisi_fisik && (
                     <p className="text-red-500 text-xs mt-1">
@@ -597,23 +530,37 @@ export default function CreateAssetModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status <span className="text-red-500">*</span>
+                    Tanggal Mulai Digunakan
                   </label>
-                  <select
-                    {...form.register("status")}
+                  <input
+                    type="date"
+                    {...form.register("tanggal_mulai_digunakan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {statusList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  {form.formState.errors.status && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.status.message}
-                    </p>
-                  )}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unit Pemakai
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Divisi IT"
+                    {...form.register("unit_pemakai")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Umur Manfaat (Bulan)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="60"
+                    {...form.register("umur_manfaat_bulan")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
             </div>
@@ -625,14 +572,26 @@ export default function CreateAssetModal({
                 Lokasi & Organisasi
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Lokasi Fisik
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Gedung A Lantai 3 Ruang 301"
+                    placeholder="Contoh: Gedung A Lantai 3"
                     {...form.register("lokasi_fisik")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ruangan
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Ruang 301"
+                    {...form.register("ruangan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -713,34 +672,20 @@ export default function CreateAssetModal({
                 <Calendar className="w-5 h-5" />
                 Penyusutan
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Metode Penyusutan
                   </label>
                   <select
-                    {...form.register("metode_penyusutan_id")}
+                    {...form.register("metode_penyusutan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Pilih Metode</option>
-                    {metodePenyusutanList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
+                    <option value="garis_lurus">Garis Lurus</option>
+                    <option value="saldo_menurun">Saldo Menurun</option>
+                    <option value="tidak_disusutkan">Tidak Disusutkan</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Masa Manfaat (Tahun)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="5"
-                    {...form.register("masa_manfaat")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
                 </div>
 
                 <div>
@@ -757,24 +702,40 @@ export default function CreateAssetModal({
               </div>
             </div>
 
-            {/* Keterangan */}
-            <div className="pb-4">
+            {/* Identifikasi */}
+            <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Keterangan Tambahan
+                <Hash className="w-5 h-5" />
+                Identifikasi
               </h3>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Keterangan
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Tambahkan catatan atau informasi tambahan..."
-                  {...form.register("keterangan")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Kode QR
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: QR-12345"
+                    {...form.register("kode_qr")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tag RFID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: RFID-67890"
+                    {...form.register("tag_rfid")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
+
+            <input type="hidden" {...form.register("created_by")} />
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">

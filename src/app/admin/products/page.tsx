@@ -24,11 +24,14 @@ import {
   deleteAset,
   getAsetStatistics,
   createAset,
+  updateAset,
   type Aset,
   type AsetPagination,
   type AsetStatistics,
 } from "@/lib/api/aset/route";
 import CreateAssetModal from "@/components/core/CreateAssetModal";
+import EditAssetModal from "@/components/core/EditAssetModal";
+import DeleteConfirmationModal from "@/components/core/Delete.Modal";
 
 interface KategoriAset {
   id: number;
@@ -53,6 +56,13 @@ export default function ProductsPage() {
 
   const [datas, setData] = useState<Aset[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedAsetId, setSelectedAsetId] = useState<number | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [asetToDelete, setAsetToDelete] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [pagination, setPagination] = useState<AsetPagination | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("-");
@@ -96,6 +106,26 @@ export default function ProductsPage() {
         error?.response?.data?.message || "Gagal menambahkan aset";
       toast.error(errorMsg);
     }
+  };
+
+  const handleUpdateAset = async (id: number, data: any) => {
+    try {
+      await updateAset(id, data);
+      toast.success("Aset berhasil diperbarui");
+      setIsEditModalOpen(false);
+      setSelectedAsetId(null);
+      fetchAssets();
+      fetchStatistics();
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message || "Gagal memperbarui aset";
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleEditClick = (asetId: number) => {
+    setSelectedAsetId(asetId);
+    setIsEditModalOpen(true);
   };
 
   const fetchAssets = async () => {
@@ -151,7 +181,6 @@ export default function ProductsPage() {
     }
   };
 
-  // Filter subkategori berdasarkan kategori yang dipilih
   useEffect(() => {
     if (kategoriFilter !== "-") {
       const filtered = subkategoriList.filter(
@@ -159,7 +188,6 @@ export default function ProductsPage() {
       );
       setFilteredSubkategori(filtered);
 
-      // Reset subkategori filter jika tidak ada di kategori yang dipilih
       if (
         subkategoriFilter !== "-" &&
         !filtered.some((sub) => sub.id.toString() === subkategoriFilter)
@@ -196,12 +224,19 @@ export default function ProductsPage() {
     fetchAssets();
   };
 
-  const handleDeleteAset = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus aset ini?")) return;
+  const handleDeleteClick = (aset: Aset) => {
+    setAsetToDelete({ id: aset.id, name: aset.nama_aset });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!asetToDelete) return;
 
     try {
-      await deleteAset(id);
+      await deleteAset(asetToDelete.id);
       toast.success("Aset berhasil dihapus");
+      setIsDeleteModalOpen(false);
+      setAsetToDelete(null);
       fetchAssets();
       fetchStatistics();
     } catch (error) {
@@ -336,7 +371,7 @@ export default function ProductsPage() {
                   Total Aset
                 </h3>
                 <p className="text-gray-900 font-semibold text-xl mt-2">
-                  {stats.total_aset}
+                  {stats?.total_aset || 0}
                 </p>
               </div>
               <div className="bg-blue-600 p-3 rounded-lg text-white">
@@ -352,7 +387,7 @@ export default function ProductsPage() {
                   Total Nilai
                 </h3>
                 <p className="text-gray-900 font-semibold text-xl mt-2">
-                  {formatCurrency(stats.total_nilai_perolehan)}
+                  {formatCurrency(stats?.total_nilai_perolehan || 0)}
                 </p>
               </div>
               <div className="bg-green-600 p-3 rounded-lg text-white">
@@ -368,7 +403,7 @@ export default function ProductsPage() {
                   Aset Aktif
                 </h3>
                 <p className="text-gray-900 font-semibold text-xl mt-2">
-                  {stats.by_status.find((s) => s.status === "aktif")?.total ||
+                  {stats?.by_status?.find((s) => s.status === "aktif")?.total ||
                     0}
                 </p>
               </div>
@@ -385,7 +420,7 @@ export default function ProductsPage() {
                   Perlu Pemeliharaan
                 </h3>
                 <p className="text-gray-900 font-semibold text-xl mt-2">
-                  {stats.perlu_pemeliharaan}
+                  {stats?.perlu_pemeliharaan || 0}
                 </p>
               </div>
               <div className="bg-orange-600 p-3 rounded-lg text-white">
@@ -487,12 +522,6 @@ export default function ProductsPage() {
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Daftar Aset</h2>
-            <div className="flex gap-2">
-              <button className="bg-gray-600 text-white px-3 py-2 rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Export
-              </button>
-            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -627,22 +656,23 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/products/detail/${aset.id}`}>
+                          {/* <Link href={`/admin/products/detail/${aset.id}`}>
                             <button
                               className="text-blue-600 hover:text-blue-800"
                               title="Lihat Detail"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                          </Link>
+                          </Link> */}
                           <button
+                            onClick={() => handleEditClick(aset.id)}
                             className="text-yellow-600 hover:text-yellow-800"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteAset(aset.id)}
+                            onClick={() => handleDeleteClick(aset)}
                             className="text-red-600 hover:text-red-800"
                             title="Hapus"
                           >
@@ -709,6 +739,28 @@ export default function ProductsPage() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateAset}
+        />
+      )}
+      {isEditModalOpen && selectedAsetId && (
+        <EditAssetModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedAsetId(null);
+          }}
+          onSubmit={handleUpdateAset}
+          asetId={selectedAsetId}
+        />
+      )}
+      {isDeleteModalOpen && asetToDelete && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setAsetToDelete(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          itemName={asetToDelete.name}
         />
       )}
     </>

@@ -157,7 +157,7 @@ export default function Sidebar() {
             </li> */}
 
             {/* Dropdown Stock Barang */}
-            <li>
+            {/* <li>
               <Link
                 href="/admin/stock"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
@@ -171,7 +171,7 @@ export default function Sidebar() {
                   Stock Barang
                 </div>
               </Link>
-            </li>
+            </li> */}
 
             <li>
               <Link
