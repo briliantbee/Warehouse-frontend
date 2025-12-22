@@ -13,6 +13,7 @@ import {
   Building2,
   Calendar,
   Tag,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
@@ -32,6 +33,7 @@ import {
 import CreateAssetModal from "@/components/core/CreateAssetModal";
 import EditAssetModal from "@/components/core/EditAssetModal";
 import DeleteConfirmationModal from "@/components/core/Delete.Modal";
+import DisposalAssetModal from "@/components/core/DisposalAssetModal";
 
 interface KategoriAset {
   id: number;
@@ -62,6 +64,12 @@ export default function ProductsPage() {
   const [asetToDelete, setAsetToDelete] = useState<{
     id: number;
     name: string;
+  } | null>(null);
+  const [isDisposalModalOpen, setIsDisposalModalOpen] = useState(false);
+  const [asetToDisposal, setAsetToDisposal] = useState<{
+    id: number;
+    kode_barang: string;
+    nama_aset: string;
   } | null>(null);
   const [pagination, setPagination] = useState<AsetPagination | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,6 +134,30 @@ export default function ProductsPage() {
   const handleEditClick = (asetId: number) => {
     setSelectedAsetId(asetId);
     setIsEditModalOpen(true);
+  };
+
+  const handleDisposalClick = (aset: Aset) => {
+    setAsetToDisposal({
+      id: aset.id,
+      kode_barang: aset.kode_barang,
+      nama_aset: aset.nama_aset,
+    });
+    setIsDisposalModalOpen(true);
+  };
+
+  const handleSubmitDisposal = async (id: number, data: any) => {
+    try {
+      await axiosInstance.post(`/api/v1/aset/${id}/disposal`, data);
+      toast.success("Pengajuan disposal berhasil disubmit");
+      setIsDisposalModalOpen(false);
+      setAsetToDisposal(null);
+      fetchAssets();
+      fetchStatistics();
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message || "Gagal submit disposal";
+      toast.error(errorMsg);
+    }
   };
 
   const fetchAssets = async () => {
@@ -602,7 +634,12 @@ export default function ProductsPage() {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {aset.kode_barang}
+                            <Link
+                              href={`/admin/products/${aset.id}`}
+                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {aset.kode_barang}
+                            </Link>
                           </div>
                           <div className="text-sm text-gray-500 truncate max-w-xs">
                             {aset.nama_aset}
@@ -656,20 +693,27 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          {/* <Link href={`/admin/products/detail/${aset.id}`}>
+                          <Link href={`/admin/products/${aset.id}`}>
                             <button
                               className="text-blue-600 hover:text-blue-800"
                               title="Lihat Detail"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Package className="w-4 h-4" />
                             </button>
-                          </Link> */}
+                          </Link>
                           <button
                             onClick={() => handleEditClick(aset.id)}
                             className="text-yellow-600 hover:text-yellow-800"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDisposalClick(aset)}
+                            className="text-orange-600 hover:text-orange-800"
+                            title="Disposal"
+                          >
+                            <ArrowRightLeft className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(aset)}
@@ -761,6 +805,17 @@ export default function ProductsPage() {
           }}
           onConfirm={handleConfirmDelete}
           itemName={asetToDelete.name}
+        />
+      )}
+      {isDisposalModalOpen && asetToDisposal && (
+        <DisposalAssetModal
+          isOpen={isDisposalModalOpen}
+          onClose={() => {
+            setIsDisposalModalOpen(false);
+            setAsetToDisposal(null);
+          }}
+          onSubmit={handleSubmitDisposal}
+          asset={asetToDisposal}
         />
       )}
     </>
