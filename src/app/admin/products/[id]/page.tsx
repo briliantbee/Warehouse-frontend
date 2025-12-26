@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQRCode } from "next-qrcode";
 import {
   ArrowLeft,
   Package,
@@ -113,6 +114,8 @@ export default function AssetDetailPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+
+  const { Canvas } = useQRCode();
 
   const fetchAssetDetail = async () => {
     try {
@@ -348,7 +351,7 @@ export default function AssetDetailPage() {
                 {asset.nama_aset}
               </h1>
               <p className="text-gray-600 mt-1">
-                {asset.kode_barang} {asset.nup && `• ${asset.nup}`}
+                Nomor NUP: {asset.nup && `• ${asset.nup}`}
               </p>
             </div>
           </div>
@@ -486,16 +489,6 @@ export default function AssetDetailPage() {
                     {asset.sumber_perolehan.replace("_", " ")}
                   </p>
                 </div>
-                {asset.keterangan_sumber_perolehan && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">
-                      Keterangan Sumber
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {asset.keterangan_sumber_perolehan}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -591,16 +584,7 @@ export default function AssetDetailPage() {
                     {formatDate(asset.tanggal_mulai_digunakan)}
                   </p>
                 </div>
-                {asset.unit_pemakai && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">
-                      Unit Pemakai
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {asset.unit_pemakai}
-                    </p>
-                  </div>
-                )}
+
                 {asset.umur_manfaat_bulan && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500">
@@ -622,15 +606,33 @@ export default function AssetDetailPage() {
                   Identifikasi
                 </h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {asset.kode_qr && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-500">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
                       Kode QR
                     </label>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {asset.kode_qr}
-                    </p>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-900 mb-3 font-mono">
+                        {asset.kode_qr}
+                      </p>
+                      <div className="flex justify-center">
+                        <Canvas
+                          text={asset.kode_qr}
+                          options={{
+                            errorCorrectionLevel: "M",
+                            type: "image/jpeg",
+                            quality: 0.3,
+                            margin: 1,
+                            color: {
+                              dark: "#000000",
+                              light: "#FFFFFF",
+                            },
+                            width: 150,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 {asset.tag_rfid && (
@@ -638,7 +640,7 @@ export default function AssetDetailPage() {
                     <label className="block text-sm font-medium text-gray-500">
                       Tag RFID
                     </label>
-                    <p className="mt-1 text-sm text-gray-900">
+                    <p className="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
                       {asset.tag_rfid}
                     </p>
                   </div>

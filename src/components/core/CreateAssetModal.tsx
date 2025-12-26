@@ -6,25 +6,33 @@ import {
   Send,
   X,
   Hash,
-  FileText,
-  Building2,
-  MapPin,
-  Calendar,
   DollarSign,
   Tag,
-  User,
   Wrench,
+  MapPin,
+  Calendar,
 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+import Select from "react-select";
 import axiosInstance from "@/lib/axios";
 import { useUser } from "../../context/UserContext";
 
+// ... (SATUAN_OPTIONS dan schema tetap sama)
+
+const SATUAN_OPTIONS = [
+  { value: "Unit", label: "Unit" },
+  { value: "Buah", label: "Buah" },
+  { value: "Pcs", label: "Pcs" },
+  { value: "Set", label: "Set" },
+  { value: "Paket", label: "Paket" },
+];
+
 const asetFormSchema = z.object({
   kode_barang: z.string().min(1, "Kode barang wajib diisi"),
-  nup: z.string().optional(),
+  nup: z.string().max(6, "NUP maksimal 6 karakter").optional(),
   nama_aset: z.string().min(1, "Nama aset wajib diisi"),
   kategori_aset_id: z.string().min(1, "Kategori wajib dipilih"),
   subkategori_aset_id: z.string().optional(),
@@ -70,16 +78,50 @@ interface DropdownOption {
   label: string;
 }
 
+const customSelectStyles = {
+  control: (base: any) => ({
+    ...base,
+    borderColor: "#d1d5db",
+    "&:hover": { borderColor: "#3b82f6" },
+    boxShadow: "none",
+    "&:focus-within": {
+      borderColor: "#3b82f6",
+      boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.1)",
+    },
+  }),
+  menu: (base: any) => ({ ...base, zIndex: 9999 }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isSelected
+      ? "#3b82f6"
+      : state.isFocused
+      ? "#eff6ff"
+      : "white",
+    color: state.isSelected ? "white" : "#1f2937",
+  }),
+};
+
+// PROPS INTERFACE - INI YANG PENTING!
+interface CreateAssetModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: AsetFormSchema) => void;
+  defaultKategoriId?: string | null; // Terima dari parent
+  defaultSubkategoriId?: string | null; // Terima dari parent
+  defaultDetailKategoriId?: string | null; // Terima dari parent
+}
+
 export default function CreateAssetModal({
   isOpen,
   onClose,
   onSubmit,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: AsetFormSchema) => void;
-}) {
+  defaultKategoriId = null,
+  defaultSubkategoriId = null,
+  defaultDetailKategoriId = null,
+}: CreateAssetModalProps) {
   const { user } = useUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<AsetFormSchema>({
     resolver: zodResolver(asetFormSchema),
@@ -87,9 +129,9 @@ export default function CreateAssetModal({
       kode_barang: "",
       nup: "",
       nama_aset: "",
-      kategori_aset_id: "",
-      subkategori_aset_id: "",
-      detail_kategori_aset_id: "",
+      kategori_aset_id: defaultKategoriId || "",
+      subkategori_aset_id: defaultSubkategoriId || "",
+      detail_kategori_aset_id: defaultDetailKategoriId || "",
       spesifikasi: "",
       jumlah: 1,
       satuan: "",
@@ -112,24 +154,23 @@ export default function CreateAssetModal({
       ruangan: "",
       kode_qr: "",
       tag_rfid: "",
-      created_by: user?.id || 0, // Menggunakan ID user yang login
+      created_by: user?.id || 0,
     },
   });
 
   // Dropdown States
   const [kategoriList, setKategoriList] = useState<DropdownOption[]>([]);
   const [subkategoriList, setSubkategoriList] = useState<DropdownOption[]>([]);
-  const [detailKategoriList, setDetailKategoriList] = useState<
-    DropdownOption[]
-  >([]);
   const [entitasList, setEntitasList] = useState<DropdownOption[]>([]);
   const [satkerList, setSatkerList] = useState<DropdownOption[]>([]);
   const [unitEselonList, setUnitEselonList] = useState<DropdownOption[]>([]);
   const [penanggungJawabList, setPenanggungJawabList] = useState<
     DropdownOption[]
   >([]);
-
   const [filteredSubkategori, setFilteredSubkategori] = useState<
+    DropdownOption[]
+  >([]);
+  const [detailKategoriList, setDetailKategoriList] = useState<
     DropdownOption[]
   >([]);
   const [filteredDetailKategori, setFilteredDetailKategori] = useState<
@@ -153,7 +194,7 @@ export default function CreateAssetModal({
         ] = await Promise.all([
           axiosInstance.get("/api/v1/dropdown/kategori-aset"),
           axiosInstance.get("/api/v1/dropdown/subkategori-aset"),
-          axiosInstance.get("/api/v1/dropdown/detail-kategori-aset"),
+          axiosInstance.get("/api/v1/detail-kategori-aset/dropdown"),
           axiosInstance.get("/api/v1/dropdown/entitas"),
           axiosInstance.get("/api/v1/dropdown/satker"),
           axiosInstance.get("/api/v1/dropdown/unit-eselon-ii"),
@@ -175,32 +216,111 @@ export default function CreateAssetModal({
     fetchDropdowns();
   }, [isOpen]);
 
-  // Filter subkategori based on kategori
+  // SIMPLE! Set nilai dari props saat modal dibuka dan data sudah ready
+  useEffect(() => {
+    if (isOpen && subkategoriList.length > 0 && detailKategoriList.length > 0) {
+      // Set kategori dari props
+      if (defaultKategoriId) {
+        form.setValue("kategori_aset_id", defaultKategoriId);
+
+        // Filter subkategori
+        const filtered = subkategoriList.filter(
+          (sub: any) => sub.kategori_aset_id?.toString() === defaultKategoriId
+        );
+        setFilteredSubkategori(filtered);
+
+        // Set subkategori dari props
+        if (defaultSubkategoriId) {
+          form.setValue("subkategori_aset_id", defaultSubkategoriId);
+
+          // Filter detail kategori
+          const filteredDetail = detailKategoriList.filter(
+            (detail: any) =>
+              detail.subkategori_aset_id?.toString() === defaultSubkategoriId
+          );
+          setFilteredDetailKategori(filteredDetail);
+
+          // Set detail kategori dari props
+          if (defaultDetailKategoriId) {
+            form.setValue("detail_kategori_aset_id", defaultDetailKategoriId);
+          }
+        }
+      }
+    }
+  }, [
+    isOpen,
+    defaultKategoriId,
+    defaultSubkategoriId,
+    defaultDetailKategoriId,
+    subkategoriList,
+    detailKategoriList,
+    form,
+  ]);
+
+  // Filter subkategori saat user mengubah kategori
   useEffect(() => {
     const kategoriId = form.watch("kategori_aset_id");
-    if (kategoriId) {
+
+    if (kategoriId && subkategoriList.length > 0) {
       const filtered = subkategoriList.filter(
         (sub: any) => sub.kategori_aset_id?.toString() === kategoriId
       );
       setFilteredSubkategori(filtered);
+
+      // Clear subkategori jika tidak valid (kecuali dari props)
+      const currentSub = form.getValues("subkategori_aset_id");
+      if (currentSub && currentSub !== defaultSubkategoriId) {
+        const isValid = filtered.some((sub: any) => sub.value === currentSub);
+        if (!isValid) {
+          form.setValue("subkategori_aset_id", "");
+          form.setValue("detail_kategori_aset_id", ""); // Clear detail kategori juga
+        }
+      }
     } else {
       setFilteredSubkategori([]);
     }
-  }, [form.watch("kategori_aset_id"), subkategoriList]);
+  }, [form.watch("kategori_aset_id"), subkategoriList, defaultSubkategoriId]);
 
-  // Filter detail kategori based on subkategori
+  // Filter detail kategori saat user mengubah subkategori
   useEffect(() => {
     const subkategoriId = form.watch("subkategori_aset_id");
-    if (subkategoriId) {
+
+    if (subkategoriId && detailKategoriList.length > 0) {
       const filtered = detailKategoriList.filter(
         (detail: any) =>
           detail.subkategori_aset_id?.toString() === subkategoriId
       );
       setFilteredDetailKategori(filtered);
+
+      // Clear detail kategori jika tidak valid (kecuali dari props)
+      const currentDetail = form.getValues("detail_kategori_aset_id");
+      if (currentDetail && currentDetail !== defaultDetailKategoriId) {
+        const isValid = filtered.some(
+          (detail: any) => detail.value === currentDetail
+        );
+        if (!isValid) {
+          form.setValue("detail_kategori_aset_id", "");
+        }
+      }
     } else {
       setFilteredDetailKategori([]);
     }
-  }, [form.watch("subkategori_aset_id"), detailKategoriList]);
+  }, [
+    form.watch("subkategori_aset_id"),
+    detailKategoriList,
+    defaultDetailKategoriId,
+  ]);
+
+  // Reset form saat modal tutup
+  useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+      setSubmitError(null);
+      setIsSubmitting(false);
+      setFilteredSubkategori([]);
+      setFilteredDetailKategori([]);
+    }
+  }, [isOpen, form]);
 
   if (!isOpen) return null;
 
@@ -216,7 +336,6 @@ export default function CreateAssetModal({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
           className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl relative overflow-y-auto max-h-[90vh]"
         >
           <button
@@ -236,12 +355,31 @@ export default function CreateAssetModal({
           </div>
 
           <form
-            onSubmit={form.handleSubmit((values) => {
-              onSubmit(values);
-              form.reset();
+            onSubmit={form.handleSubmit(async (values) => {
+              try {
+                setIsSubmitting(true);
+                setSubmitError(null);
+                await onSubmit(values);
+                form.reset();
+                onClose();
+              } catch (error) {
+                setSubmitError(
+                  error instanceof Error
+                    ? error.message
+                    : "Terjadi kesalahan saat menyimpan data"
+                );
+              } finally {
+                setIsSubmitting(false);
+              }
             })}
             className="space-y-6"
           >
+            {submitError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <p className="text-sm">{submitError}</p>
+              </div>
+            )}
+
             {/* Informasi Dasar */}
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -272,7 +410,8 @@ export default function CreateAssetModal({
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: 001/2024"
+                    placeholder="Max 6 karakter"
+                    maxLength={6}
                     {...form.register("nup")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -310,7 +449,8 @@ export default function CreateAssetModal({
                   </label>
                   <select
                     {...form.register("kategori_aset_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!!defaultKategoriId}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">Pilih Kategori</option>
                     {kategoriList.map((item) => (
@@ -319,6 +459,11 @@ export default function CreateAssetModal({
                       </option>
                     ))}
                   </select>
+                  {defaultKategoriId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Kategori sudah dipilih dari halaman sebelumnya
+                    </p>
+                  )}
                   {form.formState.errors.kategori_aset_id && (
                     <p className="text-red-500 text-xs mt-1">
                       {form.formState.errors.kategori_aset_id.message}
@@ -332,8 +477,10 @@ export default function CreateAssetModal({
                   </label>
                   <select
                     {...form.register("subkategori_aset_id")}
-                    disabled={!form.watch("kategori_aset_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    disabled={
+                      !form.watch("kategori_aset_id") || !!defaultSubkategoriId
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">Pilih Subkategori</option>
                     {filteredSubkategori.map((item) => (
@@ -342,24 +489,37 @@ export default function CreateAssetModal({
                       </option>
                     ))}
                   </select>
+                  {defaultSubkategoriId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Subkategori sudah dipilih dari halaman sebelumnya
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Detail Kategori
+                    Detail Kategori (Opsional)
                   </label>
                   <select
                     {...form.register("detail_kategori_aset_id")}
-                    disabled={!form.watch("subkategori_aset_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    disabled={
+                      !form.watch("subkategori_aset_id") ||
+                      !!defaultDetailKategoriId
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Pilih Detail Kategori</option>
+                    <option value="">Tidak ada detail kategori</option>
                     {filteredDetailKategori.map((item) => (
                       <option key={item.value} value={item.value}>
                         {item.label}
                       </option>
                     ))}
                   </select>
+                  {defaultDetailKategoriId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Detail kategori sudah dipilih dari halaman sebelumnya
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -392,12 +552,17 @@ export default function CreateAssetModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Satuan <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Unit, Buah, Set"
+                  <select
                     {...form.register("satuan")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="">Pilih Satuan</option>
+                    {SATUAN_OPTIONS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
                   {form.formState.errors.satuan && (
                     <p className="text-red-500 text-xs mt-1">
                       {form.formState.errors.satuan.message}
@@ -541,18 +706,6 @@ export default function CreateAssetModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unit Pemakai
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Divisi IT"
-                    {...form.register("unit_pemakai")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Umur Manfaat (Bulan)
                   </label>
                   <input
@@ -600,68 +753,140 @@ export default function CreateAssetModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Entitas
                   </label>
-                  <select
-                    {...form.register("entitas_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih Entitas</option>
-                    {entitasList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="entitas_id"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        options={entitasList}
+                        value={
+                          entitasList.find(
+                            (opt) => String(opt.value) === String(field.value)
+                          ) || null
+                        }
+                        onChange={(option) => {
+                          field.onChange(String(option?.value || ""));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        isClearable
+                        placeholder="Pilih Entitas"
+                        styles={customSelectStyles}
+                        noOptionsMessage={() => "Tidak ada data"}
+                        isDisabled={isSubmitting}
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                      />
+                    )}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Satker
                   </label>
-                  <select
-                    {...form.register("satker_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih Satker</option>
-                    {satkerList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="satker_id"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        options={satkerList}
+                        value={
+                          satkerList.find(
+                            (opt) => String(opt.value) === String(field.value)
+                          ) || null
+                        }
+                        onChange={(option) => {
+                          field.onChange(String(option?.value || ""));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        isClearable
+                        placeholder="Pilih Satker"
+                        styles={customSelectStyles}
+                        noOptionsMessage={() => "Tidak ada data"}
+                        isDisabled={isSubmitting}
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                      />
+                    )}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Unit Eselon II
                   </label>
-                  <select
-                    {...form.register("unit_eselon_ii_id")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih Unit Eselon II</option>
-                    {unitEselonList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="unit_eselon_ii_id"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        options={unitEselonList}
+                        value={
+                          unitEselonList.find(
+                            (opt) => String(opt.value) === String(field.value)
+                          ) || null
+                        }
+                        onChange={(option) => {
+                          field.onChange(String(option?.value || ""));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        isClearable
+                        placeholder="Pilih Unit Eselon II"
+                        styles={customSelectStyles}
+                        noOptionsMessage={() => "Tidak ada data"}
+                        isDisabled={isSubmitting}
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                      />
+                    )}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Penanggung Jawab
+                    Penanggung Jawab (PIC)
                   </label>
-                  <select
-                    {...form.register("penanggung_jawab_aset_id")}
+                  <Controller
+                    name="penanggung_jawab_aset_id"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        options={penanggungJawabList}
+                        value={
+                          penanggungJawabList.find(
+                            (opt) => String(opt.value) === String(field.value)
+                          ) || null
+                        }
+                        onChange={(option) => {
+                          field.onChange(String(option?.value || ""));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        isClearable
+                        placeholder="Pilih Penanggung Jawab"
+                        styles={customSelectStyles}
+                        noOptionsMessage={() => "Tidak ada data"}
+                        isDisabled={isSubmitting}
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                      />
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unit Pemakai
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Unit IT"
+                    {...form.register("unit_pemakai")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih Penanggung Jawab</option>
-                    {penanggungJawabList.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             </div>
@@ -750,11 +975,11 @@ export default function CreateAssetModal({
 
               <button
                 type="submit"
-                disabled={form.formState.isSubmitting}
+                disabled={isSubmitting}
                 className="flex-1 flex items-center justify-center bg-blue-600 rounded-lg py-3 text-white font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="mr-2 w-4 h-4" />
-                {form.formState.isSubmitting ? "Menyimpan..." : "Tambah Aset"}
+                {isSubmitting ? "Menyimpan..." : "Tambah Aset"}
               </button>
             </div>
           </form>

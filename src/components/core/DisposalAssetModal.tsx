@@ -28,7 +28,7 @@ const disposalFormSchema = z.object({
     "pemusnahan",
     "penghapusan",
   ]),
-  tanggal_pengajuan: z.string().min(1, "Tanggal pengajuan wajib diisi"),
+  tanggal: z.string().min(1, "Tanggal wajib diisi"),
   alasan: z.string().min(1, "Alasan wajib diisi"),
   kondisi_aset: z.enum(["baik", "rusak_ringan", "rusak_berat"]),
   nilai_transaksi: z.string().optional(),
@@ -40,6 +40,10 @@ const disposalFormSchema = z.object({
   unit_eselon_ii_tujuan_id: z.string().optional(),
   penanggung_jawab_aset_tujuan_id: z.string().optional(),
   created_by: z.number().min(1, "Created by wajib diisi"),
+  // Fields for penghapusan disposal type
+  dasar_persetujuan: z.string().optional(),
+  tanggal_pemindahan: z.string().optional(),
+  upload_bukti: z.any().optional(),
 });
 
 type DisposalFormSchema = z.infer<typeof disposalFormSchema>;
@@ -63,7 +67,7 @@ export default function DisposalAssetModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (id: number, data: DisposalFormSchema) => void;
+  onSubmit: (id: number, data: DisposalFormSchema | FormData) => void;
   asset: DisposalAsset | null;
 }) {
   const { user } = useUser();
@@ -73,7 +77,7 @@ export default function DisposalAssetModal({
     resolver: zodResolver(disposalFormSchema),
     defaultValues: {
       jenis_tindakan: "pindah_tangan",
-      tanggal_pengajuan: new Date().toISOString().split("T")[0],
+      tanggal: new Date().toISOString().split("T")[0],
       alasan: "",
       kondisi_aset: "baik",
       nilai_transaksi: "",
@@ -85,6 +89,9 @@ export default function DisposalAssetModal({
       unit_eselon_ii_tujuan_id: "",
       penanggung_jawab_aset_tujuan_id: "",
       created_by: user?.id || 0,
+      dasar_persetujuan: "",
+      tanggal_pemindahan: "",
+      upload_bukti: null,
     },
   });
 
@@ -123,10 +130,14 @@ export default function DisposalAssetModal({
   }, [isOpen]);
 
   const jenisTindakan = form.watch("jenis_tindakan");
-  const showTujuan = ["pindah_tangan", "hibah", "tukar_menukar"].includes(
-    jenisTindakan
-  );
+  const showTujuan = ["hibah", "tukar_menukar"].includes(jenisTindakan);
   const showNilaiTransaksi = ["jual", "tukar_menukar"].includes(jenisTindakan);
+  const showPenghapusanFields = jenisTindakan === "penghapusan";
+  const showPenerimaInfo = ![
+    "pemusnahan",
+    "penghapusan",
+    "pindah_tangan",
+  ].includes(jenisTindakan);
 
   if (!isOpen) return null;
 
@@ -178,7 +189,29 @@ export default function DisposalAssetModal({
           <form
             onSubmit={form.handleSubmit((values) => {
               if (asset) {
-                onSubmit(asset.id, values);
+                // Create FormData if there's a file upload
+                if (values.upload_bukti && values.upload_bukti[0]) {
+                  const formData = new FormData();
+
+                  // Append all form fields
+                  Object.entries(values).forEach(([key, value]) => {
+                    if (key === "upload_bukti" && value && value[0]) {
+                      formData.append(key, value[0]);
+                    } else if (
+                      value !== null &&
+                      value !== undefined &&
+                      value !== ""
+                    ) {
+                      formData.append(key, String(value));
+                    }
+                  });
+
+                  onSubmit(asset.id, formData);
+                } else {
+                  // Remove upload_bukti if no file selected
+                  const { upload_bukti, ...dataWithoutFile } = values;
+                  onSubmit(asset.id, dataWithoutFile);
+                }
               }
             })}
             className="space-y-6"
@@ -222,12 +255,12 @@ export default function DisposalAssetModal({
                   </label>
                   <input
                     type="date"
-                    {...form.register("tanggal_pengajuan")}
+                    {...form.register("tanggal")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {form.formState.errors.tanggal_pengajuan && (
+                  {form.formState.errors.tanggal && (
                     <p className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.tanggal_pengajuan.message}
+                      {form.formState.errors.tanggal.message}
                     </p>
                   )}
                 </div>
@@ -284,55 +317,104 @@ export default function DisposalAssetModal({
               </div>
             </div>
 
-            {/* Informasi Penerima - tampil jika bukan pemusnahan/penghapusan */}
-            {jenisTindakan !== "pemusnahan" &&
-              jenisTindakan !== "penghapusan" && (
-                <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Informasi Penerima
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Pihak Penerima
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nama pihak penerima"
-                        {...form.register("pihak_penerima")}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+            {/* Form Khusus Penghapusan */}
+            {showPenghapusanFields && (
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Form Disposal Penghapusan
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dasar Persetujuan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Dasar persetujuan penghapusan"
+                      {...form.register("dasar_persetujuan")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Kontak Penerima
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Email atau telepon"
-                        {...form.register("kontak_penerima")}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tanggal Pemindahan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      {...form.register("tanggal_pemindahan")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Alamat Penerima
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Alamat lengkap penerima"
-                        {...form.register("alamat_penerima")}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Upload Bukti <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      {...form.register("upload_bukti")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Format yang didukung: PDF, JPG, PNG, DOC, DOCX (Maksimal
+                      5MB)
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-            {/* Organisasi Tujuan - tampil untuk pindah tangan */}
+            {/* Informasi Penerima - tampil untuk jual, hibah, tukar_menukar, penyertaan_modal */}
+            {showPenerimaInfo && (
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Informasi Penerima
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pihak Penerima
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Nama pihak penerima"
+                      {...form.register("pihak_penerima")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kontak Penerima
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Email atau telepon"
+                      {...form.register("kontak_penerima")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Alamat Penerima
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Alamat lengkap penerima"
+                      {...form.register("alamat_penerima")}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Organisasi Tujuan - tampil untuk hibah, tukar_menukar */}
             {showTujuan && (
               <div className="border-b pb-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">

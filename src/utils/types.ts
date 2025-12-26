@@ -125,7 +125,6 @@ export type { NotifikasiResponse };
 type SubkategoriAset = {
   id: number;
   kategori_aset_id: number;
-  kode_subkategori: string;
   nama_subkategori: string;
   deskripsi?: string;
   status: "aktif" | "tidak_aktif";
@@ -247,3 +246,28 @@ type Aset = {
 };
 
 export type { Aset };
+
+type AsetStatisticsSummary = {
+  total_aset: number;
+  total_nilai_perolehan: number;
+  by_status: Array<{
+    status: string;
+    total: number;
+  }>;
+  by_kondisi: Array<{
+    kondisi_fisik: string;
+    total: number;
+  }>;
+  by_kategori: Array<{
+    kategori_aset_id: number;
+    total: number;
+    kategori_aset?: {
+      id: number;
+      nama_kategori: string;
+    };
+  }>;
+  perlu_pemeliharaan: number;
+  near_expiration: number;
+};
+
+export type { AsetStatisticsSummary };

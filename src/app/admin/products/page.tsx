@@ -55,6 +55,7 @@ export default function ProductsPage() {
   // Get filter params from URL
   const kategoriIdParam = searchParams.get("kategori_id");
   const subkategoriIdParam = searchParams.get("subkategori_id");
+  const detailKategoriIdParam = searchParams.get("detail_kategori_id");
 
   const [datas, setData] = useState<Aset[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -81,6 +82,10 @@ export default function ProductsPage() {
   const [subkategoriFilter, setSubkategoriFilter] = useState<string>(
     subkategoriIdParam || "-"
   );
+  const [detailKategoriFilter, setDetailKategoriFilter] = useState<string>(
+    detailKategoriIdParam || "-"
+  );
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage] = useState(10);
@@ -147,7 +152,13 @@ export default function ProductsPage() {
 
   const handleSubmitDisposal = async (id: number, data: any) => {
     try {
-      await axiosInstance.post(`/api/v1/aset/${id}/disposal`, data);
+      // Check if data is FormData (for file uploads) or regular object
+      const config =
+        data instanceof FormData
+          ? { headers: { "Content-Type": "multipart/form-data" } }
+          : {};
+
+      await axiosInstance.post(`/api/v1/aset/${id}/disposal`, data, config);
       toast.success("Pengajuan disposal berhasil disubmit");
       setIsDisposalModalOpen(false);
       setAsetToDisposal(null);
@@ -360,13 +371,13 @@ export default function ProductsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Manajemen Aset
-                {selectedKategoriName && (
+                {/* {selectedKategoriName && (
                   <span className="text-lg text-gray-600 font-normal">
                     {" - "}
                     {selectedKategoriName}
                     {selectedSubkategoriName && ` / ${selectedSubkategoriName}`}
                   </span>
-                )}
+                )} */}
               </h1>
               <p className="text-gray-600 mt-1">
                 Kelola semua aset dan inventaris
@@ -471,38 +482,6 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
-              {/* Kategori Filter */}
-              <select
-                value={kategoriFilter}
-                onChange={(e) => setKategoriFilter(e.target.value)}
-                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="-">Semua Kategori</option>
-                {kategoriList.map((kategori) => (
-                  <option key={kategori.id} value={kategori.id.toString()}>
-                    {kategori.nama_kategori}
-                  </option>
-                ))}
-              </select>
-
-              {/* Subkategori Filter */}
-              <select
-                value={subkategoriFilter}
-                onChange={(e) => setSubkategoriFilter(e.target.value)}
-                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={kategoriFilter === "-"}
-              >
-                <option value="-">Semua Subkategori</option>
-                {filteredSubkategori.map((subkategori) => (
-                  <option
-                    key={subkategori.id}
-                    value={subkategori.id.toString()}
-                  >
-                    {subkategori.nama_subkategori}
-                  </option>
-                ))}
-              </select>
-
               {/* Status Filter */}
               <select
                 value={statusFilter}
@@ -553,7 +532,15 @@ export default function ProductsPage() {
         {/* Table */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Daftar Aset</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Daftar Aset -{" "}
+              {selectedKategoriName && (
+                <span className="text-lg text-gray-600 font-normal">
+                  {selectedKategoriName}
+                  {selectedSubkategoriName && ` / ${selectedSubkategoriName}`}
+                </span>
+              )}
+            </h2>
           </div>
 
           <div className="overflow-x-auto">
@@ -561,7 +548,7 @@ export default function ProductsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kode & Nama
+                    Nama
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kategori
@@ -633,14 +620,14 @@ export default function ProductsPage() {
                     <tr key={aset.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          {/* <div className="text-sm font-medium text-gray-900">
                             <Link
                               href={`/admin/products/${aset.id}`}
                               className="text-blue-600 hover:text-blue-800 hover:underline"
                             >
                               {aset.kode_barang}
                             </Link>
-                          </div>
+                          </div> */}
                           <div className="text-sm text-gray-500 truncate max-w-xs">
                             {aset.nama_aset}
                           </div>
@@ -783,6 +770,9 @@ export default function ProductsPage() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateAset}
+          defaultKategoriId={kategoriIdParam} // ← PASS PROPS INI
+          defaultSubkategoriId={subkategoriIdParam} // ← DAN INI
+          defaultDetailKategoriId={detailKategoriIdParam} // ← DAN INI
         />
       )}
       {isEditModalOpen && selectedAsetId && (

@@ -11,62 +11,40 @@ import {
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
 import toast from "react-hot-toast";
-
-// Interface untuk data barang dari API
-interface BarangData {
-  id: number;
-  namaBarang: string;
-  productionDate: string;
-  stockAwal: number;
-  totalStock: number;
-  kategori: {
-    kategori: string;
-  };
-  status: string;
-}
+import { AsetStatisticsSummary } from "@/utils/types";
 
 interface ChartData {
   name: string;
   value: number;
-  totalStock: number;
+  label: string;
 }
 
 export default function StockBarChart() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [statisticsData, setStatisticsData] =
+    useState<AsetStatisticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedChart, setSelectedChart] = useState<
+    "status" | "kondisi" | "kategori"
+  >("status");
   const [isMounted, setIsMounted] = useState(false);
-
-  // Array nama bulan dalam bahasa Indonesia
-  const monthNames = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
 
   // Ensure component is mounted before rendering chart
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const fetchBarangData = async () => {
+  const fetchStatisticsData = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/api/v1/barang");
-      const barangData: BarangData[] = response.data.data;
+      const response = await axiosInstance.get(
+        "/api/v1/aset/statistics/summary"
+      );
+      const data: AsetStatisticsSummary = response.data;
+      setStatisticsData(data);
 
-      // Proses data untuk chart berdasarkan bulan produksi
-      const monthlyData = processDataByMonth(barangData, selectedYear);
-      setChartData(monthlyData);
+      // Process data for chart based on selected chart type
+      processChartData(data, selectedChart);
     } catch (error) {
       toast.error("Gagal memuat data chart");
     } finally {
@@ -74,52 +52,67 @@ export default function StockBarChart() {
     }
   };
 
-  const processDataByMonth = (
-    data: BarangData[],
-    year: number
-  ): ChartData[] => {
-    // Inisialisasi data untuk semua bulan (0 produk)
-    const monthlyStats = monthNames.map((month, index) => ({
-      name: month,
-      value: 0,
-      totalStock: 0,
-      month: index,
-    }));
+  const processChartData = (
+    data: AsetStatisticsSummary,
+    chartType: "status" | "kondisi" | "kategori"
+  ) => {
+    let processedData: ChartData[] = [];
 
-    // Filter data berdasarkan tahun dan status aktif
-    const filteredData = data.filter((item) => {
-      const productionYear = new Date(item.productionDate).getFullYear();
-      return productionYear === year && item.status === "active";
-    });
+    switch (chartType) {
+      case "status":
+        processedData = data.by_status.map((item) => ({
+          name: item.status.replace("_", " ").toUpperCase(),
+          value: item.total,
+          label: `${item.status}: ${item.total} aset`,
+        }));
+        break;
 
-    // Hitung jumlah produk dan total stock per bulan
-    filteredData.forEach((item) => {
-      const productionDate = new Date(item.productionDate);
-      const monthIndex = productionDate.getMonth();
+      case "kondisi":
+        processedData = data.by_kondisi.map((item) => ({
+          name: item.kondisi_fisik.replace("_", " ").toUpperCase(),
+          value: item.total,
+          label: `${item.kondisi_fisik}: ${item.total} aset`,
+        }));
+        break;
 
-      monthlyStats[monthIndex].value += 1; // Tambah jumlah produk
-      monthlyStats[monthIndex].totalStock += item.totalStock; // Tambah total stock
-    });
-
-    return monthlyStats;
-  };
-
-  // Mendapatkan tahun-tahun yang tersedia dari data
-  const getAvailableYears = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-
-    // Tampilkan 3 tahun ke belakang sampai tahun depan
-    for (let year = currentYear - 3; year <= currentYear + 1; year++) {
-      years.push(year);
+      case "kategori":
+        processedData = data.by_kategori.map((item) => ({
+          name:
+            item.kategori_aset?.nama_kategori ||
+            `Kategori ${item.kategori_aset_id}`,
+          value: item.total,
+          label: `${item.kategori_aset?.nama_kategori || "Kategori"}: ${
+            item.total
+          } aset`,
+        }));
+        break;
     }
 
-    return years;
+    setChartData(processedData);
   };
 
   useEffect(() => {
-    fetchBarangData();
-  }, [selectedYear]);
+    fetchStatisticsData();
+  }, []);
+
+  useEffect(() => {
+    if (statisticsData) {
+      processChartData(statisticsData, selectedChart);
+    }
+  }, [selectedChart, statisticsData]);
+
+  const getChartTitle = () => {
+    switch (selectedChart) {
+      case "status":
+        return "Distribusi Aset berdasarkan Status";
+      case "kondisi":
+        return "Distribusi Aset berdasarkan Kondisi Fisik";
+      case "kategori":
+        return "Distribusi Aset berdasarkan Kategori";
+      default:
+        return "Distribusi Aset";
+    }
+  };
 
   // Custom tooltip untuk chart
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -127,9 +120,8 @@ export default function StockBarChart() {
       const data = payload[0].payload;
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-800">{`Bulan: ${label}`}</p>
-          <p className="text-blue-600">{`Jumlah Produk: ${data.value}`}</p>
-          <p className="text-green-600">{`Total Stock: ${data.totalStock}`}</p>
+          <p className="font-semibold text-gray-800">{label}</p>
+          <p className="text-blue-600">{`Jumlah: ${data.value} aset`}</p>
         </div>
       );
     }
@@ -139,19 +131,21 @@ export default function StockBarChart() {
   return (
     <div className="bg-white rounded-lg border shadow-sm h-full flex flex-col p-5 top-20 md:top-0">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Data Barang per Bulan</h2>
+        <h2 className="text-xl font-semibold">{getChartTitle()}</h2>
 
-        {/* Dropdown untuk memilih tahun */}
+        {/* Dropdown untuk memilih jenis chart */}
         <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          value={selectedChart}
+          onChange={(e) =>
+            setSelectedChart(
+              e.target.value as "status" | "kondisi" | "kategori"
+            )
+          }
           className="border border-gray-300 px-3 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {getAvailableYears().map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
+          <option value="status">Berdasarkan Status</option>
+          <option value="kondisi">Berdasarkan Kondisi</option>
+          <option value="kategori">Berdasarkan Kategori</option>
         </select>
       </div>
 
@@ -188,7 +182,7 @@ export default function StockBarChart() {
               </div>
             </div>
           </div>
-        ) : chartData.some((item) => item.value > 0) ? (
+        ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -202,7 +196,7 @@ export default function StockBarChart() {
               />
               <YAxis
                 label={{
-                  value: "Jumlah Produk",
+                  value: "Jumlah Aset",
                   angle: -90,
                   position: "insideLeft",
                 }}
@@ -212,7 +206,7 @@ export default function StockBarChart() {
                 dataKey="value"
                 fill="#1D4ED8"
                 radius={[5, 5, 0, 0]}
-                name="Jumlah Produk"
+                name="Jumlah Aset"
               />
             </BarChart>
           </ResponsiveContainer>
@@ -232,37 +226,42 @@ export default function StockBarChart() {
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h2a2 2 0 01-2-2z"
               />
             </svg>
-            <p className="text-lg font-medium">Tidak ada data produk</p>
-            <p className="text-sm">untuk tahun {selectedYear}</p>
+            <p className="text-lg font-medium">Tidak ada data aset</p>
+            <p className="text-sm">untuk kategori yang dipilih</p>
           </div>
         )}
       </div>
 
       {/* Summary statistics */}
-      {!isLoading && chartData.some((item) => item.value > 0) && (
+      {!isLoading && statisticsData && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Total Produk</p>
+              <p className="text-sm text-gray-600">Total Aset</p>
               <p className="text-xl font-bold text-blue-600">
-                {chartData.reduce((sum, item) => sum + item.value, 0)}
+                {statisticsData.total_aset}
               </p>
             </div>
-            <div className="bg-purple-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Bulan Terbanyak</p>
-              <p className="text-lg font-bold text-purple-600">
-                {chartData.reduce(
-                  (max, item) => (item.value > max.value ? item : max),
-                  chartData[0]
-                )?.name || "-"}
+            <div className="bg-green-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">Total Nilai Perolehan</p>
+              <p className="text-lg font-bold text-green-600">
+                {new Intl.NumberFormat("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                  minimumFractionDigits: 0,
+                }).format(statisticsData.total_nilai_perolehan)}
               </p>
             </div>
             <div className="bg-orange-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Rata-rata/Bulan</p>
+              <p className="text-sm text-gray-600">Perlu Pemeliharaan</p>
               <p className="text-xl font-bold text-orange-600">
-                {Math.round(
-                  chartData.reduce((sum, item) => sum + item.value, 0) / 12
-                )}
+                {statisticsData.perlu_pemeliharaan}
+              </p>
+            </div>
+            <div className="bg-red-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">Mendekati Kadaluarsa</p>
+              <p className="text-xl font-bold text-red-600">
+                {statisticsData.near_expiration}
               </p>
             </div>
           </div>

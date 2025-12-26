@@ -2,31 +2,46 @@
 
 import { BoxesIcon, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Barang } from "@/utils/types";
+import { AsetStatisticsSummary } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 
 export default function Stock() {
-  const [barang, setBarang] = useState<Barang[]>([]);
+  const [statisticsData, setStatisticsData] =
+    useState<AsetStatisticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchBarang = async () => {
+  const fetchStatistics = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/api/v1/barang");
-      setBarang(response.data.data);
+      const response = await axiosInstance.get(
+        "/api/v1/aset/statistics/summary"
+      );
+      setStatisticsData(response.data);
     } catch (error) {
+      console.error("Error fetching statistics:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBarang();
+    fetchStatistics();
   }, []);
 
-  const totalBarang = barang.length;
-  const activeBarang = barang.filter((b) => b.status === "active").length;
-  const unActiveBarang = barang.filter((b) => b.status === "un-active").length;
+  // Helper functions to get specific data from the statistics
+  const getStatusCount = (status: string) => {
+    return (
+      statisticsData?.by_status.find((item) => item.status === status)?.total ||
+      0
+    );
+  };
+
+  const getKondisiCount = (kondisi: string) => {
+    return (
+      statisticsData?.by_kondisi.find((item) => item.kondisi_fisik === kondisi)
+        ?.total || 0
+    );
+  };
 
   return (
     <>
@@ -81,8 +96,10 @@ export default function Stock() {
           </span> */}
             </div>
             <div className="mt-auto">
-              <p className="text-2xl font-semibold">{totalBarang}</p>
-              <p className="text-sm text-gray-500">Total Barang</p>
+              <p className="text-2xl font-semibold">
+                {statisticsData?.total_aset || 0}
+              </p>
+              <p className="text-sm text-gray-500">Total Aset</p>
             </div>
           </div>
 
@@ -94,8 +111,10 @@ export default function Stock() {
               </div>
             </div>
             <div className="mt-auto">
-              <p className="text-2xl font-semibold">{activeBarang}</p>
-              <p className="text-sm text-gray-500">Barang Aktif</p>
+              <p className="text-2xl font-semibold">
+                {getStatusCount("aktif")}
+              </p>
+              <p className="text-sm text-gray-500">Aset Aktif</p>
             </div>
           </div>
 
@@ -107,8 +126,10 @@ export default function Stock() {
               </div>
             </div>
             <div className="mt-auto">
-              <p className="text-2xl font-semibold">{unActiveBarang}</p>
-              <p className="text-sm text-gray-500">Barang Non Aktif</p>
+              <p className="text-2xl font-semibold">
+                {statisticsData?.perlu_pemeliharaan || 0}
+              </p>
+              <p className="text-sm text-gray-500">Perlu Pemeliharaan</p>
             </div>
           </div>
         </div>

@@ -3,7 +3,6 @@ import axiosInstance from "@/lib/axios";
 export interface SubkategoriAset {
   id: number;
   kategori_aset_id: number;
-  kode_subkategori: string;
   nama_subkategori: string;
   deskripsi?: string;
   status: "aktif" | "tidak_aktif";
@@ -18,7 +17,6 @@ export interface SubkategoriAset {
 
 export interface CreateSubkategoriData {
   kategori_aset_id: number;
-  kode_subkategori: string;
   nama_subkategori: string;
   deskripsi?: string;
   status: "aktif" | "tidak_aktif";
@@ -26,7 +24,6 @@ export interface CreateSubkategoriData {
 
 export interface UpdateSubkategoriData {
   kategori_aset_id?: number;
-  kode_subkategori?: string;
   nama_subkategori?: string;
   deskripsi?: string;
   status?: "aktif" | "tidak_aktif";

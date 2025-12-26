@@ -346,9 +346,6 @@ export default function CategoryPage() {
             <thead className="bg-text/15">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  KODE KATEGORI
-                </th>
-                <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
                   NAMA KATEGORI
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
@@ -403,9 +400,6 @@ export default function CategoryPage() {
                     key={data.id || idx}
                     className="bg-background text-sm font-medium text-text text-center border-y border-secondary"
                   >
-                    <td className="px-4 sm:px-6 py-4 uppercase whitespace-nowrap">
-                      {data.kode_kategori}
-                    </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       {data.nama_kategori}
                     </td>
@@ -442,14 +436,14 @@ export default function CategoryPage() {
                             <Eye />
                           </button>
                         </Link>
-                        <Link href={`/admin/products?kategori_id=${data.id}`}>
+                        {/* <Link href={`/admin/products?kategori_id=${data.id}`}>
                           <button
                             className="text-green-600 hover:text-green-800 cursor-pointer"
                             title="Lihat Aset"
                           >
                             <Package />
                           </button>
-                        </Link>
+                        </Link> */}
                         <button
                           onClick={() => handleDeleteIdCategory(data)}
                           className="text-red-600 hover:text-red-800 cursor-pointer"

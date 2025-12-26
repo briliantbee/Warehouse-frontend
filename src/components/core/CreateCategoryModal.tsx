@@ -7,7 +7,6 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 
 const categoryFormSchema = z.object({
-  kode_kategori: z.string().min(1, "Kode kategori wajib diisi"),
   nama_kategori: z.string().min(1, "Nama kategori wajib diisi"),
   deskripsi: z.string().optional(),
   status: z.string().min(1, "Status wajib diisi"),
@@ -27,7 +26,6 @@ export default function CreateCategoryModal({
   const form = useForm<CategoryFormSchema>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
-      kode_kategori: "",
       nama_kategori: "",
       deskripsi: "",
       status: "aktif",
@@ -38,21 +36,6 @@ export default function CreateCategoryModal({
   const handleNamaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nama = e.target.value;
     form.setValue("nama_kategori", nama);
-
-    // Auto generate kode: ambil huruf pertama tiap kata dan angka random
-    const kode = nama
-      .toUpperCase()
-      .split(" ")
-      .map((word) => word.charAt(0))
-      .join("")
-      .slice(0, 3);
-
-    if (kode) {
-      form.setValue(
-        "kode_kategori",
-        `${kode}-${Date.now().toString().slice(-4)}`
-      );
-    }
   };
 
   if (!isOpen) return null;
@@ -96,7 +79,7 @@ export default function CreateCategoryModal({
             })}
           >
             {/* Input Kode Kategori */}
-            <div className="mb-5">
+            {/* <div className="mb-5">
               <label
                 htmlFor="kode_kategori"
                 className="block text-text font-medium text-base mb-2"
@@ -124,7 +107,7 @@ export default function CreateCategoryModal({
               <p className="text-gray-500 text-xs mt-1">
                 Kode akan otomatis terisi saat Anda mengetik nama kategori
               </p>
-            </div>
+            </div> */}
 
             {/* Input Nama Kategori */}
             <div className="mb-5">

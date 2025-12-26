@@ -22,7 +22,6 @@ export default function CreateSubkategoriModal({
 }: CreateSubkategoriModalProps) {
   const [formData, setFormData] = useState<CreateSubkategoriData>({
     kategori_aset_id: parseInt(categoryId),
-    kode_subkategori: "",
     nama_subkategori: "",
     deskripsi: "",
     status: "aktif",
@@ -50,7 +49,6 @@ export default function CreateSubkategoriModal({
       // Reset form
       setFormData({
         kategori_aset_id: parseInt(categoryId),
-        kode_subkategori: "",
         nama_subkategori: "",
         deskripsi: "",
         status: "aktif",
@@ -66,7 +64,6 @@ export default function CreateSubkategoriModal({
   const handleClose = () => {
     setFormData({
       kategori_aset_id: parseInt(categoryId),
-      kode_subkategori: "",
       nama_subkategori: "",
       deskripsi: "",
       status: "aktif",
@@ -108,21 +105,6 @@ export default function CreateSubkategoriModal({
               value={categoryName || `Kategori ID: ${categoryId}`}
               disabled
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Kode Subkategori <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="kode_subkategori"
-              value={formData.kode_subkategori}
-              onChange={handleChange}
-              placeholder="Masukkan kode subkategori"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
