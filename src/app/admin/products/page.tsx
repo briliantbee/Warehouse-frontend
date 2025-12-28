@@ -15,7 +15,7 @@ import {
   Tag,
   ArrowRightLeft,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import axiosInstance from "@/lib/axios";
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
@@ -48,7 +48,8 @@ interface SubkategoriAset {
   status: string;
 }
 
-export default function ProductsPage() {
+// Pisahkan komponen yang menggunakan useSearchParams
+function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -152,7 +153,6 @@ export default function ProductsPage() {
 
   const handleSubmitDisposal = async (id: number, data: any) => {
     try {
-      // Check if data is FormData (for file uploads) or regular object
       const config =
         data instanceof FormData
           ? { headers: { "Content-Type": "multipart/form-data" } }
@@ -252,7 +252,6 @@ export default function ProductsPage() {
     fetchSubkategoriList();
   }, []);
 
-  // Set initial filters dari URL params
   useEffect(() => {
     if (kategoriIdParam) {
       setKategoriFilter(kategoriIdParam);
@@ -345,7 +344,6 @@ export default function ProductsPage() {
     return pageNumbers;
   };
 
-  // Get selected kategori name for display
   const selectedKategoriName =
     kategoriFilter !== "-"
       ? kategoriList.find((k) => k.id.toString() === kategoriFilter)
@@ -371,13 +369,6 @@ export default function ProductsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Manajemen Aset
-                {/* {selectedKategoriName && (
-                  <span className="text-lg text-gray-600 font-normal">
-                    {" - "}
-                    {selectedKategoriName}
-                    {selectedSubkategoriName && ` / ${selectedSubkategoriName}`}
-                  </span>
-                )} */}
               </h1>
               <p className="text-gray-600 mt-1">
                 Kelola semua aset dan inventaris
@@ -482,7 +473,6 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
-              {/* Status Filter */}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -496,7 +486,6 @@ export default function ProductsPage() {
                 <option value="dihapus">Dihapus</option>
               </select>
 
-              {/* Kondisi Filter */}
               <select
                 value={kondisiFilter}
                 onChange={(e) => setKondisiFilter(e.target.value)}
@@ -620,14 +609,6 @@ export default function ProductsPage() {
                     <tr key={aset.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div>
-                          {/* <div className="text-sm font-medium text-gray-900">
-                            <Link
-                              href={`/admin/products/${aset.id}`}
-                              className="text-blue-600 hover:text-blue-800 hover:underline"
-                            >
-                              {aset.kode_barang}
-                            </Link>
-                          </div> */}
                           <div className="text-sm text-gray-500 truncate max-w-xs">
                             {aset.nama_aset}
                           </div>
@@ -770,9 +751,9 @@ export default function ProductsPage() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateAset}
-          defaultKategoriId={kategoriIdParam} // ← PASS PROPS INI
-          defaultSubkategoriId={subkategoriIdParam} // ← DAN INI
-          defaultDetailKategoriId={detailKategoriIdParam} // ← DAN INI
+          defaultKategoriId={kategoriIdParam}
+          defaultSubkategoriId={subkategoriIdParam}
+          defaultDetailKategoriId={detailKategoriIdParam}
         />
       )}
       {isEditModalOpen && selectedAsetId && (
@@ -809,5 +790,25 @@ export default function ProductsPage() {
         />
       )}
     </>
+  );
+}
+
+// Komponen utama dengan Suspense boundary
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mt-20 p-4 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat data...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }

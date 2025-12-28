@@ -78,14 +78,14 @@ const DetailBarangModal: React.FC<DetailBarangModalProps> = ({
                 </span>
               }
             />
-            <DetailRow
+            {/* <DetailRow
               label="Kategori"
               value={
                 <span className="font-semibold text-black">
                   {barang.kategori.kategori}
                 </span>
               }
-            />
+            /> */}
             <DetailRow
               label="Stock Sekarang"
               value={<span className="text-red-400">{barang.totalStock}</span>}

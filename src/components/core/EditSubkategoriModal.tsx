@@ -24,7 +24,6 @@ export default function EditSubkategoriModal({
 }: EditSubkategoriModalProps) {
   const [formData, setFormData] = useState<UpdateSubkategoriData>({
     kategori_aset_id: subkategori.kategori_aset_id,
-    kode_subkategori: subkategori.kode_subkategori,
     nama_subkategori: subkategori.nama_subkategori,
     deskripsi: subkategori.deskripsi || "",
     status: subkategori.status,
@@ -61,7 +60,6 @@ export default function EditSubkategoriModal({
     // Reset form ke data asli saat close
     setFormData({
       kategori_aset_id: subkategori.kategori_aset_id,
-      kode_subkategori: subkategori.kode_subkategori,
       nama_subkategori: subkategori.nama_subkategori,
       deskripsi: subkategori.deskripsi || "",
       status: subkategori.status,
@@ -73,7 +71,6 @@ export default function EditSubkategoriModal({
     // Update form data when subkategori prop changes
     setFormData({
       kategori_aset_id: subkategori.kategori_aset_id,
-      kode_subkategori: subkategori.kode_subkategori,
       nama_subkategori: subkategori.nama_subkategori,
       deskripsi: subkategori.deskripsi || "",
       status: subkategori.status,
@@ -111,21 +108,6 @@ export default function EditSubkategoriModal({
               }
               disabled
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Kode Subkategori <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="kode_subkategori"
-              value={formData.kode_subkategori}
-              onChange={handleChange}
-              placeholder="Masukkan kode subkategori"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
