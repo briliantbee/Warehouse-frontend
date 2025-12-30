@@ -124,11 +124,11 @@ export default function Home() {
 
       {/* Hero Section - Responsive */}
       <div className="flex flex-col items-center justify-center my-8 sm:my-12 md:my-16 px-4 animate-fade-in">
-        <h1 className="font-bold text-2xl sm:text-3xl md:text-4xl text-secondary mb-2 sm:mb-4 text-center">
-          Warehouse Management
+        <h1 className="font-bold text-xl sm:text-3xl md:text-4xl text-secondary mb-2 sm:mb-4 text-center">
+          Barang Milik Negara (BMN)
         </h1>
-        <h2 className="text-primary font-bold text-3xl sm:text-4xl md:text-5xl text-center">
-          Warehouse App
+        <h2 className="text-primary font-bold text-xl sm:text-4xl md:text-2xl text-center">
+          Deputi Bidang Kewirausahaan - Kementerian UMKM Republik Indonesia
         </h2>
       </div>
 
