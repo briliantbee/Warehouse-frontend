@@ -13,6 +13,8 @@ import { Toaster, toast } from "react-hot-toast";
 import { isAxiosError } from "axios";
 import Head from "next/head";
 import { useUser } from "@/context/UserContext";
+import Logo from "../../../../public/umkm.png";
+import Image from "next/image";
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -200,12 +202,15 @@ export default function LoginPage() {
         </div> */}
         <div className="bg-background p-8 border-2 border-secondary rounded-xl shadow-xl">
           <div className="flex items-center justify-center">
-            <div className="inline-block bg-primary p-3 rounded-lg text-white mr-2">
-              <Warehouse className="w-6 h-6" />
+            <div className=" mr-2">
+              <Image
+                src={Logo}
+                height={300}
+                width={300}
+                alt="logo object-contain"
+                className=" mr-2"
+              />{" "}
             </div>
-            <h1 className="font-semibold text-2xl text-text">
-              Warehouse Management
-            </h1>
           </div>
 
           <div className="inline-block mt-6">

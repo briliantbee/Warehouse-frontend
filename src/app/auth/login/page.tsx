@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import axiosInstance from "@/lib/axios";
-import Logo from "../../../../public/assets/logo.png";
+import Logo from "../../../../public/umkm.png";
 import Image from "next/image";
 import { Mail, Lock } from "lucide-react";
 import { useUser } from "@/context/UserContext";
@@ -53,7 +53,6 @@ export default function LoginPage() {
             alt="logo"
             className="w-10 mr-2"
           />
-          <h3 className="text-2xl mt-1">Warehouse Management</h3>
         </div>
 
         <h4 className="text-md text-black font-semibold mt-8">Welcome Back</h4>
