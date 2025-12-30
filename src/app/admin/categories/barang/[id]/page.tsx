@@ -533,16 +533,6 @@ export default function CategorySubkategoriPage() {
                         >
                           <Tag />
                         </button>
-                        <Link
-                          href={`/admin/products?kategori_id=${categoryId}&subkategori_id=${data.id}`}
-                        >
-                          <button
-                            className="text-green-600 hover:text-green-800"
-                            title="Lihat Aset"
-                          >
-                            <Package />
-                          </button>
-                        </Link>
                         <button
                           onClick={() => handleDeleteIdSubkategori(data)}
                           className="text-red-600 hover:text-red-800"

@@ -122,6 +122,18 @@ export default function EditAssetModal({
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Currency formatting functions
+  const formatCurrency = (value: string | number): string => {
+    if (!value) return "";
+    const numericValue =
+      typeof value === "string" ? value.replace(/[^\d]/g, "") : String(value);
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const parseCurrency = (value: string): string => {
+    return value.replace(/,/g, "");
+  };
+
   const form = useForm<AsetFormSchema>({
     resolver: zodResolver(asetFormSchema),
     defaultValues: {
@@ -152,8 +164,6 @@ export default function EditAssetModal({
       nilai_residu: "",
       lokasi_fisik: "",
       ruangan: "",
-      kode_qr: "",
-      tag_rfid: "",
       created_by: user?.id || 0,
     },
   });
@@ -226,8 +236,6 @@ export default function EditAssetModal({
           nilai_residu: aset.nilai_residu || "",
           lokasi_fisik: aset.lokasi_fisik || "",
           ruangan: aset.ruangan || "",
-          kode_qr: aset.kode_qr || "",
-          tag_rfid: aset.tag_rfid || "",
           created_by: user?.id || 0,
         });
       } catch (error) {
@@ -754,9 +762,13 @@ export default function EditAssetModal({
                       Nilai Residu
                     </label>
                     <input
-                      type="number"
-                      placeholder="0"
-                      {...form.register("nilai_residu")}
+                      type="text"
+                      placeholder="1,000,000"
+                      value={formatCurrency(form.watch("nilai_residu") || "")}
+                      onChange={(e) => {
+                        const rawValue = parseCurrency(e.target.value);
+                        form.setValue("nilai_residu", rawValue);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -883,6 +895,7 @@ export default function EditAssetModal({
                       placeholder="Kode QR"
                       {...form.register("kode_qr")}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly
                     />
                   </div>
 
@@ -895,6 +908,7 @@ export default function EditAssetModal({
                       placeholder="Tag RFID"
                       {...form.register("tag_rfid")}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly
                     />
                   </div>
                 </div>

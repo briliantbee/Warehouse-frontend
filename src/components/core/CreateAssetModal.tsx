@@ -66,8 +66,6 @@ const asetFormSchema = z.object({
   nilai_residu: z.string().optional(),
   lokasi_fisik: z.string().optional(),
   ruangan: z.string().optional(),
-  kode_qr: z.string().optional(),
-  tag_rfid: z.string().optional(),
   created_by: z.number(),
 });
 
@@ -123,6 +121,18 @@ export default function CreateAssetModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Currency formatting functions
+  const formatCurrency = (value: string | number): string => {
+    if (!value) return "";
+    const numericValue =
+      typeof value === "string" ? value.replace(/[^\d]/g, "") : String(value);
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const parseCurrency = (value: string): string => {
+    return value.replace(/,/g, "");
+  };
+
   const form = useForm<AsetFormSchema>({
     resolver: zodResolver(asetFormSchema),
     defaultValues: {
@@ -152,8 +162,6 @@ export default function CreateAssetModal({
       nilai_residu: "",
       lokasi_fisik: "",
       ruangan: "",
-      kode_qr: "",
-      tag_rfid: "",
       created_by: user?.id || 0,
     },
   });
@@ -587,7 +595,7 @@ export default function CreateAssetModal({
             {/* Perolehan & Nilai */}
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <span className="w-5 h-5">Rp</span>
                 Perolehan & Nilai
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -607,9 +615,13 @@ export default function CreateAssetModal({
                     Nilai Perolehan <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="number"
-                    placeholder="10000000"
-                    {...form.register("nilai_perolehan")}
+                    type="text"
+                    placeholder="10,000,000"
+                    value={formatCurrency(form.watch("nilai_perolehan") || "")}
+                    onChange={(e) => {
+                      const rawValue = parseCurrency(e.target.value);
+                      form.setValue("nilai_perolehan", rawValue);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {form.formState.errors.nilai_perolehan && (
@@ -918,42 +930,13 @@ export default function CreateAssetModal({
                     Nilai Residu
                   </label>
                   <input
-                    type="number"
-                    placeholder="1000000"
-                    {...form.register("nilai_residu")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Identifikasi */}
-            <div className="border-b pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Hash className="w-5 h-5" />
-                Identifikasi
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Kode QR
-                  </label>
-                  <input
                     type="text"
-                    placeholder="Contoh: QR-12345"
-                    {...form.register("kode_qr")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tag RFID
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: RFID-67890"
-                    {...form.register("tag_rfid")}
+                    placeholder="1,000,000"
+                    value={formatCurrency(form.watch("nilai_residu") || "")}
+                    onChange={(e) => {
+                      const rawValue = parseCurrency(e.target.value);
+                      form.setValue("nilai_residu", rawValue);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
