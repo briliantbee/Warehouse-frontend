@@ -362,6 +362,64 @@ export default function CreateAssetModal({
             </h1>
           </div>
 
+          {/* Selected Categories Display */}
+          {(defaultKategoriId ||
+            defaultSubkategoriId ||
+            defaultDetailKategoriId) && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-blue-600" />
+                Kategori Terpilih
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {defaultKategoriId && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-600 mb-1">Kategori</p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {kategoriList.length > 0
+                        ? kategoriList.find(
+                            (k) =>
+                              k.value.toString() ===
+                              defaultKategoriId.toString()
+                          )?.label || "Tidak ditemukan"
+                        : "Loading..."}
+                    </p>
+                  </div>
+                )}
+                {defaultSubkategoriId && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-600 mb-1">Subkategori</p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {subkategoriList.length > 0
+                        ? subkategoriList.find(
+                            (s) =>
+                              s.value.toString() ===
+                              defaultSubkategoriId.toString()
+                          )?.label || "Tidak ditemukan"
+                        : "Loading..."}
+                    </p>
+                  </div>
+                )}
+                {defaultDetailKategoriId && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-600 mb-1">
+                      Detail Kategori
+                    </p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {detailKategoriList.length > 0
+                        ? detailKategoriList.find(
+                            (d) =>
+                              d.value.toString() ===
+                              defaultDetailKategoriId.toString()
+                          )?.label || "Tidak ditemukan"
+                        : "Loading..."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <form
             onSubmit={form.handleSubmit(async (values) => {
               try {
@@ -458,7 +516,7 @@ export default function CreateAssetModal({
                   <select
                     {...form.register("kategori_aset_id")}
                     disabled={!!defaultKategoriId}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
                   >
                     <option value="">Pilih Kategori</option>
                     {kategoriList.map((item) => (
@@ -467,11 +525,6 @@ export default function CreateAssetModal({
                       </option>
                     ))}
                   </select>
-                  {defaultKategoriId && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Kategori sudah dipilih dari halaman sebelumnya
-                    </p>
-                  )}
                   {form.formState.errors.kategori_aset_id && (
                     <p className="text-red-500 text-xs mt-1">
                       {form.formState.errors.kategori_aset_id.message}
@@ -488,7 +541,7 @@ export default function CreateAssetModal({
                     disabled={
                       !form.watch("kategori_aset_id") || !!defaultSubkategoriId
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
                   >
                     <option value="">Pilih Subkategori</option>
                     {filteredSubkategori.map((item) => (
@@ -497,11 +550,6 @@ export default function CreateAssetModal({
                       </option>
                     ))}
                   </select>
-                  {defaultSubkategoriId && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Subkategori sudah dipilih dari halaman sebelumnya
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -514,7 +562,7 @@ export default function CreateAssetModal({
                       !form.watch("subkategori_aset_id") ||
                       !!defaultDetailKategoriId
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
                   >
                     <option value="">Tidak ada detail kategori</option>
                     {filteredDetailKategori.map((item) => (
@@ -523,11 +571,6 @@ export default function CreateAssetModal({
                       </option>
                     ))}
                   </select>
-                  {defaultDetailKategoriId && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Detail kategori sudah dipilih dari halaman sebelumnya
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

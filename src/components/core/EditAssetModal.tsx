@@ -388,553 +388,623 @@ export default function EditAssetModal({
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
           ) : (
-            <form
-              onSubmit={form.handleSubmit((values) => {
-                if (asetId) {
-                  onSubmit(asetId, values);
-                }
-              })}
-              className="space-y-6"
-            >
-              {/* Hidden input for created_by */}
-              <input type="hidden" {...form.register("created_by")} />
-
-              {/* Informasi Dasar */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Hash className="w-5 h-5" />
-                  Informasi Dasar
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Kode Barang <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: BRG-001"
-                      {...form.register("kode_barang")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {form.formState.errors.kode_barang && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.kode_barang.message}
-                      </p>
+            <>
+              {/* Selected Categories Display */}
+              {(form.watch("kategori_aset_id") ||
+                form.watch("subkategori_aset_id") ||
+                form.watch("detail_kategori_aset_id")) && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-blue-600" />
+                    Kategori Terpilih
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {form.watch("kategori_aset_id") && (
+                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                        <p className="text-xs text-gray-600 mb-1">Kategori</p>
+                        <p className="font-bold text-gray-900 text-sm">
+                          {kategoriList.length > 0
+                            ? kategoriList.find(
+                                (k) =>
+                                  k.value.toString() ===
+                                  form.watch("kategori_aset_id").toString()
+                              )?.label || "Tidak ditemukan"
+                            : "Loading..."}
+                        </p>
+                      </div>
                     )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      NUP (Nomor Urut Pendaftaran)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: 001/2024"
-                      {...form.register("nup")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nama Aset <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Laptop Dell Latitude 5420"
-                      {...form.register("nama_aset")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {form.formState.errors.nama_aset && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.nama_aset.message}
-                      </p>
+                    {form.watch("subkategori_aset_id") && (
+                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                        <p className="text-xs text-gray-600 mb-1">
+                          Subkategori
+                        </p>
+                        <p className="font-bold text-gray-900 text-sm">
+                          {filteredSubkategori.length > 0
+                            ? filteredSubkategori.find(
+                                (s) =>
+                                  s.value.toString() ===
+                                  (form.watch("subkategori_aset_id") || "").toString()
+                              )?.label || "Tidak ditemukan"
+                            : "Loading..."}
+                        </p>
+                      </div>
+                    )}
+                    {form.watch("detail_kategori_aset_id") && (
+                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                        <p className="text-xs text-gray-600 mb-1">
+                          Detail Kategori
+                        </p>
+                        <p className="font-bold text-gray-900 text-sm">
+                          {filteredDetailKategori.length > 0
+                            ? filteredDetailKategori.find(
+                                (d) =>
+                                  d.value.toString() ===
+                                  (form
+                                    .watch("detail_kategori_aset_id") || "")
+                                    .toString()
+                              )?.label || "Tidak ditemukan"
+                            : "Loading..."}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Kategori */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Tag className="w-5 h-5" />
-                  Kategori
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Kategori <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...form.register("kategori_aset_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Kategori</option>
-                      {kategoriList.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                    {form.formState.errors.kategori_aset_id && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.kategori_aset_id.message}
-                      </p>
-                    )}
-                  </div>
+              <form
+                onSubmit={form.handleSubmit((values) => {
+                  if (asetId) {
+                    onSubmit(asetId, values);
+                  }
+                })}
+                className="space-y-6"
+              >
+                {/* Hidden input for created_by */}
+                <input type="hidden" {...form.register("created_by")} />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subkategori
-                    </label>
-                    <select
-                      {...form.register("subkategori_aset_id")}
-                      disabled={!form.watch("kategori_aset_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    >
-                      <option value="">Pilih Subkategori</option>
-                      {filteredSubkategori.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Informasi Dasar */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Hash className="w-5 h-5" />
+                    Informasi Dasar
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kode Barang <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: BRG-001"
+                        {...form.register("kode_barang")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {form.formState.errors.kode_barang && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.kode_barang.message}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Detail Kategori
-                    </label>
-                    <select
-                      {...form.register("detail_kategori_aset_id")}
-                      disabled={!form.watch("subkategori_aset_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    >
-                      <option value="">Pilih Detail Kategori</option>
-                      {filteredDetailKategori.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        NUP (Nomor Urut Pendaftaran)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: 001/2024"
+                        {...form.register("nup")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
 
-              {/* Spesifikasi & Kuantitas */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  Spesifikasi & Kuantitas
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Jumlah <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="1"
-                      {...form.register("jumlah", { valueAsNumber: true })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {form.formState.errors.jumlah && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.jumlah.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Satuan <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Unit, Buah, Set"
-                      {...form.register("satuan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {form.formState.errors.satuan && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.satuan.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nilai Perolehan <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      {...form.register("nilai_perolehan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {form.formState.errors.nilai_perolehan && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.nilai_perolehan.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mata Uang <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...form.register("mata_uang")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="IDR">IDR</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                    {form.formState.errors.mata_uang && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.mata_uang.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal Perolehan
-                    </label>
-                    <input
-                      type="date"
-                      {...form.register("tanggal_perolehan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Sumber Perolehan <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...form.register("sumber_perolehan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="pembelian">Pembelian</option>
-                      <option value="hibah">Hibah</option>
-                      <option value="tukar_menukar">Tukar Menukar</option>
-                      <option value="penyertaan_modal">Penyertaan Modal</option>
-                      <option value="hasil_pembangunan">
-                        Hasil Pembangunan
-                      </option>
-                      <option value="lainnya">Lainnya</option>
-                    </select>
-                    {form.formState.errors.sumber_perolehan && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.sumber_perolehan.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Spesifikasi
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Contoh: Intel Core i5-1135G7, RAM 8GB, SSD 256GB"
-                      {...form.register("spesifikasi")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nama Aset <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Laptop Dell Latitude 5420"
+                        {...form.register("nama_aset")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {form.formState.errors.nama_aset && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.nama_aset.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Kondisi & Status */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  Kondisi & Status
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Kondisi Fisik <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...form.register("kondisi_fisik")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="baik">Baik</option>
-                      <option value="rusak_ringan">Rusak Ringan</option>
-                      <option value="rusak_berat">Rusak Berat</option>
-                    </select>
-                    {form.formState.errors.kondisi_fisik && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.kondisi_fisik.message}
-                      </p>
-                    )}
-                  </div>
+                {/* Kategori */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Tag className="w-5 h-5" />
+                    Kategori
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kategori <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...form.register("kategori_aset_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Kategori</option>
+                        {kategoriList.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                      {form.formState.errors.kategori_aset_id && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.kategori_aset_id.message}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...form.register("status")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="aktif">Aktif</option>
-                      <option value="dalam_pemeliharaan">
-                        Dalam Pemeliharaan
-                      </option>
-                      <option value="rusak">Rusak</option>
-                      <option value="dipindahtangankan">
-                        Dipindahtangankan
-                      </option>
-                      <option value="dihapus">Dihapus</option>
-                    </select>
-                    {form.formState.errors.status && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.status.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Subkategori
+                      </label>
+                      <select
+                        {...form.register("subkategori_aset_id")}
+                        disabled={!form.watch("kategori_aset_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
+                      >
+                        <option value="">Pilih Subkategori</option>
+                        {filteredSubkategori.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              {/* Informasi Tambahan */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Informasi Tambahan
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Unit Pemakai
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: IT Department"
-                      {...form.register("unit_pemakai")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal Mulai Digunakan
-                    </label>
-                    <input
-                      type="date"
-                      {...form.register("tanggal_mulai_digunakan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Umur Manfaat (Bulan)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="12"
-                      {...form.register("umur_manfaat_bulan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Metode Penyusutan
-                    </label>
-                    <select
-                      {...form.register("metode_penyusutan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Metode</option>
-                      <option value="garis_lurus">Garis Lurus</option>
-                      <option value="saldo_menurun">Saldo Menurun</option>
-                      <option value="tidak_disusutkan">Tidak Disusutkan</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nilai Residu
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="1,000,000"
-                      value={formatCurrency(form.watch("nilai_residu") || "")}
-                      onChange={(e) => {
-                        const rawValue = parseCurrency(e.target.value);
-                        form.setValue("nilai_residu", rawValue);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Keterangan Sumber Perolehan
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Keterangan tambahan"
-                      {...form.register("keterangan_sumber_perolehan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Detail Kategori
+                      </label>
+                      <select
+                        {...form.register("detail_kategori_aset_id")}
+                        disabled={!form.watch("subkategori_aset_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
+                      >
+                        <option value="">Pilih Detail Kategori</option>
+                        {filteredDetailKategori.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Lokasi */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Lokasi & Organisasi
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Lokasi Fisik
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Gedung A Lantai 3"
-                      {...form.register("lokasi_fisik")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                {/* Spesifikasi & Kuantitas */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="w-5 h-5" />
+                    Spesifikasi & Kuantitas
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Jumlah <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="1"
+                        {...form.register("jumlah", { valueAsNumber: true })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {form.formState.errors.jumlah && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.jumlah.message}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ruangan
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Ruang 301"
-                      {...form.register("ruangan")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Satuan <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Unit, Buah, Set"
+                        {...form.register("satuan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {form.formState.errors.satuan && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.satuan.message}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Entitas
-                    </label>
-                    <select
-                      {...form.register("entitas_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Entitas</option>
-                      {entitasList.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nilai Perolehan <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        {...form.register("nilai_perolehan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {form.formState.errors.nilai_perolehan && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.nilai_perolehan.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mata Uang <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...form.register("mata_uang")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="IDR">IDR</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                      </select>
+                      {form.formState.errors.mata_uang && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.mata_uang.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal Perolehan
+                      </label>
+                      <input
+                        type="date"
+                        {...form.register("tanggal_perolehan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Sumber Perolehan <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...form.register("sumber_perolehan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="pembelian">Pembelian</option>
+                        <option value="hibah">Hibah</option>
+                        <option value="tukar_menukar">Tukar Menukar</option>
+                        <option value="penyertaan_modal">
+                          Penyertaan Modal
                         </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Satker
-                    </label>
-                    <select
-                      {...form.register("satker_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Satker</option>
-                      {satkerList.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
+                        <option value="hasil_pembangunan">
+                          Hasil Pembangunan
                         </option>
-                      ))}
-                    </select>
-                  </div>
+                        <option value="lainnya">Lainnya</option>
+                      </select>
+                      {form.formState.errors.sumber_perolehan && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.sumber_perolehan.message}
+                        </p>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Unit Eselon II
-                    </label>
-                    <select
-                      {...form.register("unit_eselon_ii_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Unit Eselon II</option>
-                      {unitEselonList.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Penanggung Jawab
-                    </label>
-                    <select
-                      {...form.register("penanggung_jawab_aset_id")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Penanggung Jawab</option>
-                      {penanggungJawabList.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Kode QR
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Kode QR"
-                      {...form.register("kode_qr")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tag RFID
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Tag RFID"
-                      {...form.register("tag_rfid")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      readOnly
-                    />
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Spesifikasi
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Contoh: Intel Core i5-1135G7, RAM 8GB, SSD 256GB"
+                        {...form.register("spesifikasi")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 flex items-center justify-center bg-gray-500 rounded-lg py-3 text-white font-semibold hover:bg-gray-600 transition-all"
-                >
-                  <X className="mr-2 w-4 h-4" />
-                  Batal
-                </button>
+                {/* Kondisi & Status */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="w-5 h-5" />
+                    Kondisi & Status
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kondisi Fisik <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...form.register("kondisi_fisik")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="baik">Baik</option>
+                        <option value="rusak_ringan">Rusak Ringan</option>
+                        <option value="rusak_berat">Rusak Berat</option>
+                      </select>
+                      {form.formState.errors.kondisi_fisik && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.kondisi_fisik.message}
+                        </p>
+                      )}
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="flex-1 flex items-center justify-center bg-blue-600 rounded-lg py-3 text-white font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="mr-2 w-4 h-4" />
-                  {form.formState.isSubmitting ? "Menyimpan..." : "Update Aset"}
-                </button>
-              </div>
-            </form>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...form.register("status")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="aktif">Aktif</option>
+                        <option value="dalam_pemeliharaan">
+                          Dalam Pemeliharaan
+                        </option>
+                        <option value="rusak">Rusak</option>
+                        <option value="dipindahtangankan">
+                          Dipindahtangankan
+                        </option>
+                        <option value="dihapus">Dihapus</option>
+                      </select>
+                      {form.formState.errors.status && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {form.formState.errors.status.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informasi Tambahan */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Informasi Tambahan
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Unit Pemakai
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: IT Department"
+                        {...form.register("unit_pemakai")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal Mulai Digunakan
+                      </label>
+                      <input
+                        type="date"
+                        {...form.register("tanggal_mulai_digunakan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Umur Manfaat (Bulan)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="12"
+                        {...form.register("umur_manfaat_bulan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Metode Penyusutan
+                      </label>
+                      <select
+                        {...form.register("metode_penyusutan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Metode</option>
+                        <option value="garis_lurus">Garis Lurus</option>
+                        <option value="saldo_menurun">Saldo Menurun</option>
+                        <option value="tidak_disusutkan">
+                          Tidak Disusutkan
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nilai Residu
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="1,000,000"
+                        value={formatCurrency(form.watch("nilai_residu") || "")}
+                        onChange={(e) => {
+                          const rawValue = parseCurrency(e.target.value);
+                          form.setValue("nilai_residu", rawValue);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Keterangan Sumber Perolehan
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Keterangan tambahan"
+                        {...form.register("keterangan_sumber_perolehan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lokasi */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Lokasi & Organisasi
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Lokasi Fisik
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Gedung A Lantai 3"
+                        {...form.register("lokasi_fisik")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Ruangan
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Ruang 301"
+                        {...form.register("ruangan")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Entitas
+                      </label>
+                      <select
+                        {...form.register("entitas_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Entitas</option>
+                        {entitasList.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Satker
+                      </label>
+                      <select
+                        {...form.register("satker_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Satker</option>
+                        {satkerList.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Unit Eselon II
+                      </label>
+                      <select
+                        {...form.register("unit_eselon_ii_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Unit Eselon II</option>
+                        {unitEselonList.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Penanggung Jawab
+                      </label>
+                      <select
+                        {...form.register("penanggung_jawab_aset_id")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Pilih Penanggung Jawab</option>
+                        {penanggungJawabList.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kode QR
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Kode QR"
+                        {...form.register("kode_qr")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tag RFID
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Tag RFID"
+                        {...form.register("tag_rfid")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 flex items-center justify-center bg-gray-500 rounded-lg py-3 text-white font-semibold hover:bg-gray-600 transition-all"
+                  >
+                    <X className="mr-2 w-4 h-4" />
+                    Batal
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={form.formState.isSubmitting}
+                    className="flex-1 flex items-center justify-center bg-blue-600 rounded-lg py-3 text-white font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className="mr-2 w-4 h-4" />
+                    {form.formState.isSubmitting
+                      ? "Menyimpan..."
+                      : "Update Aset"}
+                  </button>
+                </div>
+              </form>
+            </>
           )}
         </motion.div>
       </motion.div>
