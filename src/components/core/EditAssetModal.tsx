@@ -64,6 +64,7 @@ const asetFormSchema = z.object({
   ruangan: z.string().optional(),
   kode_qr: z.string().optional(),
   tag_rfid: z.string().optional(),
+  foto_aset: z.array(z.any()).optional(),
   created_by: z.number().min(1, "Created by wajib diisi"),
 });
 
@@ -105,6 +106,7 @@ interface Aset {
   ruangan?: string;
   kode_qr?: string;
   tag_rfid?: string;
+  foto_aset?: string[];
   created_by: number;
 }
 
@@ -116,11 +118,14 @@ export default function EditAssetModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (id: number, data: AsetFormSchema) => void;
+  onSubmit: (id: number, data: AsetFormSchema, fotoFiles?: File[]) => void;
   asetId: number | null;
 }) {
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
+  const [fotoFiles, setFotoFiles] = useState<File[]>([]);
+  const [fotoPreview, setFotoPreview] = useState<string[]>([]);
+  const [existingFotos, setExistingFotos] = useState<string[]>([]);
 
   // Currency formatting functions
   const formatCurrency = (value: string | number): string => {
@@ -238,6 +243,11 @@ export default function EditAssetModal({
           ruangan: aset.ruangan || "",
           created_by: user?.id || 0,
         });
+
+        // Set existing photos
+        if (aset.foto_aset && Array.isArray(aset.foto_aset)) {
+          setExistingFotos(aset.foto_aset);
+        }
       } catch (error) {
         console.error("Error fetching asset detail:", error);
       } finally {
@@ -423,7 +433,9 @@ export default function EditAssetModal({
                             ? filteredSubkategori.find(
                                 (s) =>
                                   s.value.toString() ===
-                                  (form.watch("subkategori_aset_id") || "").toString()
+                                  (
+                                    form.watch("subkategori_aset_id") || ""
+                                  ).toString()
                               )?.label || "Tidak ditemukan"
                             : "Loading..."}
                         </p>
@@ -439,9 +451,9 @@ export default function EditAssetModal({
                             ? filteredDetailKategori.find(
                                 (d) =>
                                   d.value.toString() ===
-                                  (form
-                                    .watch("detail_kategori_aset_id") || "")
-                                    .toString()
+                                  (
+                                    form.watch("detail_kategori_aset_id") || ""
+                                  ).toString()
                               )?.label || "Tidak ditemukan"
                             : "Loading..."}
                         </p>
@@ -454,7 +466,7 @@ export default function EditAssetModal({
               <form
                 onSubmit={form.handleSubmit((values) => {
                   if (asetId) {
-                    onSubmit(asetId, values);
+                    onSubmit(asetId, values, fotoFiles);
                   }
                 })}
                 className="space-y-6"

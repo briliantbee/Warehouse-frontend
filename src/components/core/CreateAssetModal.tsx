@@ -66,6 +66,7 @@ const asetFormSchema = z.object({
   nilai_residu: z.string().optional(),
   lokasi_fisik: z.string().optional(),
   ruangan: z.string().optional(),
+  foto_aset: z.array(z.any()).optional(),
   created_by: z.number(),
 });
 
@@ -103,7 +104,7 @@ const customSelectStyles = {
 interface CreateAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: AsetFormSchema) => void;
+  onSubmit: (data: AsetFormSchema, fotoFiles?: File[]) => void;
   defaultKategoriId?: string | null; // Terima dari parent
   defaultSubkategoriId?: string | null; // Terima dari parent
   defaultDetailKategoriId?: string | null; // Terima dari parent
@@ -120,6 +121,8 @@ export default function CreateAssetModal({
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fotoFiles, setFotoFiles] = useState<File[]>([]);
+  const [fotoPreview, setFotoPreview] = useState<string[]>([]);
 
   // Currency formatting functions
   const formatCurrency = (value: string | number): string => {
@@ -327,6 +330,8 @@ export default function CreateAssetModal({
       setIsSubmitting(false);
       setFilteredSubkategori([]);
       setFilteredDetailKategori([]);
+      setFotoFiles([]);
+      setFotoPreview([]);
     }
   }, [isOpen, form]);
 
@@ -425,8 +430,10 @@ export default function CreateAssetModal({
               try {
                 setIsSubmitting(true);
                 setSubmitError(null);
-                await onSubmit(values);
+                await onSubmit(values, fotoFiles);
                 form.reset();
+                setFotoFiles([]);
+                setFotoPreview([]);
                 onClose();
               } catch (error) {
                 setSubmitError(
@@ -983,6 +990,116 @@ export default function CreateAssetModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Upload Foto Aset */}
+            <div className="border-b pb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Upload Foto 4 Sisi (Opsional)
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Upload foto dari 4 sisi berbeda: Samping Kanan/Kiri, Atas,
+                Depan, dan Belakang. Format: JPG, PNG, GIF, BMP. Maksimal 2MB
+                per foto.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { label: "Samping Kanan/Kiri", index: 0 },
+                  { label: "Atas", index: 1 },
+                  { label: "Depan", index: 2 },
+                  { label: "Belakang", index: 3 },
+                ].map(({ label, index }) => (
+                  <div key={index}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Foto {label}
+                    </label>
+                    <div className="relative">
+                      {fotoPreview[index] ? (
+                        <div className="relative group">
+                          <img
+                            src={fotoPreview[index]}
+                            alt={`Preview ${label}`}
+                            className="w-full h-40 object-cover rounded-lg border-2 border-blue-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newFiles = [...fotoFiles];
+                              const newPreviews = [...fotoPreview];
+                              newFiles.splice(index, 1);
+                              newPreviews.splice(index, 1);
+                              setFotoFiles(newFiles);
+                              setFotoPreview(newPreviews);
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Package className="w-8 h-8 text-gray-400 mb-2" />
+                            <p className="text-xs text-gray-500 text-center px-2">
+                              Klik untuk upload
+                              <br />
+                              JPG, PNG, GIF, BMP
+                              <br />
+                              Max 2MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.gif,.bmp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                // Validate file type
+                                const validTypes = [
+                                  "image/jpeg",
+                                  "image/jpg",
+                                  "image/png",
+                                  "image/gif",
+                                  "image/bmp",
+                                ];
+                                if (!validTypes.includes(file.type)) {
+                                  alert(
+                                    "Format file tidak valid. Gunakan JPG, PNG, GIF, atau BMP."
+                                  );
+                                  return;
+                                }
+                                // Validate file size (2MB)
+                                if (file.size > 2048 * 1024) {
+                                  alert(
+                                    "Ukuran file terlalu besar. Maksimal 2MB."
+                                  );
+                                  return;
+                                }
+
+                                const newFiles = [...fotoFiles];
+                                newFiles[index] = file;
+                                setFotoFiles(newFiles);
+
+                                // Create preview
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const newPreviews = [...fotoPreview];
+                                  newPreviews[index] = reader.result as string;
+                                  setFotoPreview(newPreviews);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -79,6 +79,8 @@ interface Aset {
   ruangan?: string;
   kode_qr?: string;
   tag_rfid?: string;
+  foto_aset?: string[];
+  foto_aset_urls?: string[];
   created_at: string;
   updated_at: string;
   created_by: number;
@@ -117,11 +119,56 @@ export default function AssetDetailPage() {
 
   const { Canvas } = useQRCode();
 
+  // Helper function to format photo URL correctly
+  const getPhotoUrl = (url: string) => {
+    // If it's already a full URL, return as is
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+
+    // If it's a relative path, construct the full URL
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_STORAGE || "http://127.0.0.1:8000";
+
+    // Remove any leading slashes and 'storage/app/public/' if present
+    let cleanPath = url
+      .replace(/^\/+/, "")
+      .replace(/^storage\/app\/public\//, "");
+
+    // Construct: http://localhost:8000/storage/{path}
+    return `${baseUrl}/storage/${cleanPath}`;
+  };
+
   const fetchAssetDetail = async () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get(`/api/v1/aset/${assetId}`);
-      setAsset(response.data);
+      const assetData = response.data;
+
+      // Backend already returns foto_aset_urls with full URLs, use them directly
+      // If not, fallback to constructing from foto_aset
+      if (
+        assetData.foto_aset_urls &&
+        Array.isArray(assetData.foto_aset_urls) &&
+        assetData.foto_aset_urls.length > 0
+      ) {
+        // Backend already provided full URLs, use them as-is (no processing needed)
+        // URLs are already set by backend, no need to reassign
+      } else if (
+        assetData.foto_aset &&
+        Array.isArray(assetData.foto_aset) &&
+        assetData.foto_aset.length > 0
+      ) {
+        // Backend only provided paths, construct full URLs
+        assetData.foto_aset_urls = assetData.foto_aset.map((path: string) =>
+          getPhotoUrl(path)
+        );
+      } else {
+        // No photos available
+        assetData.foto_aset_urls = [];
+      }
+
+      setAsset(assetData);
     } catch (error) {
       console.error("Error fetching asset detail:", error);
       toast.error("Gagal memuat detail aset");
@@ -142,11 +189,6 @@ export default function AssetDetailPage() {
       setMaintenanceRecords(response.data.maintenance || []);
       setMaintenanceTotal(response.data.total || 0);
       setMaintenanceTotalCost(response.data.total_biaya || 0);
-
-      console.log(
-        "Maintenance records loaded:",
-        response.data.maintenance?.length || 0
-      );
     } catch (error: any) {
       console.error("Error fetching maintenance records:", error);
 
@@ -184,7 +226,6 @@ export default function AssetDetailPage() {
       setIsDeleteModalOpen(false);
       router.push("/admin/products");
     } catch (error) {
-      console.error("Error deleting asset:", error);
       toast.error("Gagal menghapus aset");
     }
   };
@@ -384,6 +425,44 @@ export default function AssetDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Information */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Foto Aset */}
+            {asset.foto_aset_urls && asset.foto_aset_urls.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="w-5 h-5 text-gray-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Foto Aset
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {asset.foto_aset_urls.map((url, index) => (
+                    <div
+                      key={index}
+                      className="relative group aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-all cursor-pointer bg-gray-100"
+                      onClick={() => {
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      <img
+                        src={url}
+                        alt={`Foto ${index + 1} - ${asset.nama_aset}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                        <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          Klik untuk perbesar
+                        </span>
+                      </div>
+                      <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                        {["Samping", "Atas", "Depan", "Belakang"][index] ||
+                          `Foto ${index + 1}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex items-center gap-2 mb-4">

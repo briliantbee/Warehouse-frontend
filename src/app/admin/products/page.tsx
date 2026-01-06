@@ -108,9 +108,36 @@ function ProductsContent() {
     perlu_pemeliharaan: 0,
   });
 
-  const handleCreateAset = async (data: any) => {
+  const handleCreateAset = async (data: any, fotoFiles?: File[]) => {
     try {
-      await createAset(data);
+      // If there are photo files, use FormData
+      if (fotoFiles && fotoFiles.length > 0) {
+        const formData = new FormData();
+
+        // Append all form fields
+        Object.keys(data).forEach((key) => {
+          if (
+            data[key] !== undefined &&
+            data[key] !== null &&
+            data[key] !== ""
+          ) {
+            formData.append(key, data[key]);
+          }
+        });
+
+        // Append photo files
+        fotoFiles.forEach((file) => {
+          formData.append("foto_aset[]", file);
+        });
+
+        await axiosInstance.post("/api/v1/aset", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // No photos, send as regular JSON
+        await createAset(data);
+      }
+
       toast.success("Aset berhasil ditambahkan");
       setIsCreateModalOpen(false);
       fetchAssets();
@@ -122,9 +149,43 @@ function ProductsContent() {
     }
   };
 
-  const handleUpdateAset = async (id: number, data: any) => {
+  const handleUpdateAset = async (
+    id: number,
+    data: any,
+    fotoFiles?: File[]
+  ) => {
     try {
-      await updateAset(id, data);
+      // If there are photo files, use FormData
+      if (fotoFiles && fotoFiles.length > 0) {
+        const formData = new FormData();
+
+        // Append all form fields
+        Object.keys(data).forEach((key) => {
+          if (
+            data[key] !== undefined &&
+            data[key] !== null &&
+            data[key] !== ""
+          ) {
+            formData.append(key, data[key]);
+          }
+        });
+
+        // Append photo files
+        fotoFiles.forEach((file) => {
+          formData.append("foto_aset[]", file);
+        });
+
+        // Use POST with _method for Laravel
+        formData.append("_method", "PUT");
+
+        await axiosInstance.post(`/api/v1/aset/${id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // No photos, send as regular JSON
+        await updateAset(id, data);
+      }
+
       toast.success("Aset berhasil diperbarui");
       setIsEditModalOpen(false);
       setSelectedAsetId(null);
