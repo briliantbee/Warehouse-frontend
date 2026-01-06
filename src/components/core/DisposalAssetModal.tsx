@@ -43,6 +43,7 @@ const disposalFormSchema = z.object({
   // Fields for penghapusan disposal type
   dasar_persetujuan: z.string().optional(),
   tanggal_pemindahan: z.string().optional(),
+  // Upload bukti foto 4 sisi untuk penghapusan (array max 4 files)
   upload_bukti: z.any().optional(),
 });
 
@@ -102,6 +103,12 @@ export default function DisposalAssetModal({
   const [penanggungJawabList, setPenanggungJawabList] = useState<
     DropdownOption[]
   >([]);
+
+  // State for 4 foto files (upload_bukti array)
+  const [fotoSamping, setFotoSamping] = useState<File | null>(null);
+  const [fotoAtas, setFotoAtas] = useState<File | null>(null);
+  const [fotoDepan, setFotoDepan] = useState<File | null>(null);
+  const [fotoBelakang, setFotoBelakang] = useState<File | null>(null);
 
   // Fetch all dropdowns
   useEffect(() => {
@@ -189,15 +196,23 @@ export default function DisposalAssetModal({
           <form
             onSubmit={form.handleSubmit((values) => {
               if (asset) {
-                // Create FormData if there's a file upload
-                if (values.upload_bukti && values.upload_bukti[0]) {
+                // Collect all foto files into array for upload_bukti
+                const fotoFiles = [
+                  fotoSamping,
+                  fotoAtas,
+                  fotoDepan,
+                  fotoBelakang,
+                ].filter((f): f is File => f !== null);
+                const hasUploadBukti = fotoFiles.length > 0;
+
+                // Create FormData if there's any file upload
+                if (hasUploadBukti) {
                   const formData = new FormData();
 
                   // Append all form fields
                   Object.entries(values).forEach(([key, value]) => {
-                    if (key === "upload_bukti" && value && value[0]) {
-                      formData.append(key, value[0]);
-                    } else if (
+                    if (
+                      key !== "upload_bukti" &&
                       value !== null &&
                       value !== undefined &&
                       value !== ""
@@ -206,11 +221,16 @@ export default function DisposalAssetModal({
                     }
                   });
 
+                  // Append foto files as upload_bukti array
+                  fotoFiles.forEach((file, index) => {
+                    formData.append(`upload_bukti[${index}]`, file);
+                  });
+
                   onSubmit(asset.id, formData);
                 } else {
                   // Remove upload_bukti if no file selected
-                  const { upload_bukti, ...dataWithoutFile } = values;
-                  onSubmit(asset.id, dataWithoutFile);
+                  const { upload_bukti, ...dataWithoutFiles } = values;
+                  onSubmit(asset.id, dataWithoutFiles);
                 }
               }
             })}
@@ -348,20 +368,69 @@ export default function DisposalAssetModal({
                     />
                   </div>
 
+                  {/* Upload Bukti - Foto 4 Sisi */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Upload Bukti <span className="text-red-500">*</span>
+                      Upload Bukti - Foto 4 Sisi (Opsional)
                     </label>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      {...form.register("upload_bukti")}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Format yang didukung: PDF, JPG, PNG, DOC, DOCX (Maksimal
-                      5MB)
+                    <p className="text-xs text-gray-500 mb-3">
+                      Format: JPG, PNG, GIF, BMP (Maksimal 2MB per foto,
+                      maksimal 4 foto)
                     </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Foto Samping (Kanan/Kiri)
+                        </label>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.gif,.bmp"
+                          onChange={(e) =>
+                            setFotoSamping(e.target.files?.[0] || null)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Foto Atas
+                        </label>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.gif,.bmp"
+                          onChange={(e) =>
+                            setFotoAtas(e.target.files?.[0] || null)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Foto Depan
+                        </label>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.gif,.bmp"
+                          onChange={(e) =>
+                            setFotoDepan(e.target.files?.[0] || null)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Foto Belakang
+                        </label>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.gif,.bmp"
+                          onChange={(e) =>
+                            setFotoBelakang(e.target.files?.[0] || null)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
