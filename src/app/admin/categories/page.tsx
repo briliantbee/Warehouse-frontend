@@ -9,9 +9,9 @@ import {
   Trash,
   Group,
   Eye,
+  Package,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Category } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 import CreateCategoryModal from "@/components/core/CreateCategoryModal";
 import {
@@ -26,33 +26,45 @@ import EditCategoryModal from "@/components/core/EditCategoryModal";
 import Link from "next/link";
 
 const categoryFormSchema = z.object({
-  kategori: z.string(),
+  nama_kategori: z.string(),
   status: z.string(),
+  deskripsi: z.string().optional(),
+  kode_kategori: z.string(),
 });
 
 type CategoryFormSchema = z.infer<typeof categoryFormSchema>;
 
+interface KategoriAset {
+  id: number;
+  kode_kategori: string;
+  nama_kategori: string;
+  deskripsi: string | null;
+  status: "aktif" | "tidak_aktif";
+  created_at: string;
+  updated_at: string;
+}
+
 export default function CategoryPage() {
-  const [datas, setData] = useState<Category[]>([]);
+  const [datas, setData] = useState<KategoriAset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("-");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [categoryIdToDelete, setCategoryIdToDelete] = useState<Category | null>(
-    null
-  );
-  const [perPage] = useState(5); // Menampilkan 5 data per halaman
-  const [filteredData, setFilteredData] = useState<Category[]>([]);
+  const [categoryIdToDelete, setCategoryIdToDelete] =
+    useState<KategoriAset | null>(null);
+  const [perPage] = useState(5);
+  const [filteredData, setFilteredData] = useState<KategoriAset[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
+  const [categoryToEdit, setCategoryToEdit] = useState<KategoriAset | null>(
+    null
+  );
 
-  // Hitung statistik berdasarkan data yang sudah difilter
   const totalCategories = datas.length;
   const activeCategories = datas.filter((c) => c.status === "aktif").length;
   const unActiveCategories = datas.filter(
-    (c) => c.status == "non-aktif"
+    (c) => c.status === "tidak_aktif"
   ).length;
   const activePercentage = totalCategories
     ? ((activeCategories / totalCategories) * 100).toFixed(2)
@@ -61,44 +73,50 @@ export default function CategoryPage() {
   const fetchCategories = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/api/v1/kategori");
+      const response = await axiosInstance.get("/api/v1/kategori-aset");
       setData(response.data.data);
     } catch (error) {
+      toast.error("Gagal memuat data kategori");
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEditCategoryClick = (category: Category) => {
+  const handleEditCategoryClick = (category: KategoriAset) => {
     setCategoryToEdit(category);
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateCategory = async (updatedData: CategoryFormSchema) => {
+  const handleUpdateCategory = async (updatedData: any) => {
     if (!categoryToEdit) return;
     try {
       await updateCategory(categoryToEdit.id, updatedData);
       toast.success("Kategori berhasil diperbarui");
       setIsEditModalOpen(false);
       fetchCategories();
-    } catch (error) {
-      toast.error("Gagal memperbarui kategori");
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message || "Gagal memperbarui kategori";
+      toast.error(errorMsg);
     }
   };
 
-  const handleCreateCategory = async (newCategory: CategoryFormSchema) => {
+  const handleCreateCategory = async (newCategory: any) => {
     try {
       await createCategory(newCategory);
       toast.success("Berhasil menambahkan kategori");
       fetchCategories();
       setIsModalOpen(false);
-    } catch (error) {
-      toast.error("Gagal menambahkan kategori");
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message || "Gagal menambahkan kategori";
+      toast.error(errorMsg);
     }
   };
 
-  const handleDeleteIdCategory = async (id: Category) => {
-    setCategoryIdToDelete(id);
+  const handleDeleteIdCategory = async (category: KategoriAset) => {
+    setCategoryIdToDelete(category);
     setDeleteModal(true);
   };
 
@@ -108,8 +126,10 @@ export default function CategoryPage() {
       toast.success("Berhasil menghapus kategori");
       setDeleteModal(false);
       fetchCategories();
-    } catch (error) {
-      toast.error("Gagal menghapus kategori");
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message || "Gagal menghapus kategori";
+      toast.error(errorMsg);
     }
   };
 
@@ -117,29 +137,26 @@ export default function CategoryPage() {
     fetchCategories();
   }, []);
 
-  // Filter dan search data
   useEffect(() => {
     let filtered = datas;
 
-    // Filter berdasarkan status
     if (statusFilter !== "-") {
       filtered = filtered.filter((data) => data.status === statusFilter);
     }
 
-    // Filter berdasarkan pencarian
     if (searchTerm.trim() !== "") {
       filtered = filtered.filter(
         (data) =>
           data.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.kategori.toLowerCase().includes(searchTerm.toLowerCase())
+          data.nama_kategori.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          data.kode_kategori.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     setFilteredData(filtered);
-    setCurrentPage(1); // Reset ke halaman pertama saat filter berubah
+    setCurrentPage(1);
   }, [statusFilter, searchTerm, datas]);
 
-  // Menangani perubahan filter status
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value);
   };
@@ -148,18 +165,15 @@ export default function CategoryPage() {
     setSearchTerm(e.target.value);
   };
 
-  // Menangani perubahan halaman
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Pagination
   const indexOfLastItem = currentPage * perPage;
   const indexOfFirstItem = indexOfLastItem - perPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredData.length / perPage);
 
-  // Generate page numbers untuk pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
@@ -204,7 +218,6 @@ export default function CategoryPage() {
       {/* Card Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-5">
         {isLoading ? (
-          // Skeleton Cards
           Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`card-skeleton-${index}`}
@@ -221,7 +234,6 @@ export default function CategoryPage() {
           ))
         ) : (
           <>
-            {/* Card 1 - Total Kategori */}
             <div className="bg-white rounded-lg shadow-md border p-5">
               <div className="flex justify-between">
                 <div>
@@ -238,7 +250,6 @@ export default function CategoryPage() {
               </div>
             </div>
 
-            {/* Card 2 - Kategori Aktif */}
             <div className="bg-white rounded-lg shadow-md border p-5">
               <div className="flex justify-between">
                 <div>
@@ -255,7 +266,6 @@ export default function CategoryPage() {
               </div>
             </div>
 
-            {/* Card 3 - Kategori Non Aktif */}
             <div className="bg-white rounded-lg shadow-md border p-5">
               <div className="flex justify-between">
                 <div>
@@ -272,7 +282,6 @@ export default function CategoryPage() {
               </div>
             </div>
 
-            {/* Card 4 - Persentase Aktif */}
             <div className="bg-white rounded-lg shadow-md border p-5">
               <div className="flex justify-between">
                 <div>
@@ -305,7 +314,7 @@ export default function CategoryPage() {
           >
             <option value="-">Semua Status</option>
             <option value="aktif">Aktif</option>
-            <option value="non-aktif">Non-aktif</option>
+            <option value="tidak_aktif">Non-aktif</option>
           </select>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
@@ -352,37 +361,32 @@ export default function CategoryPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                // Skeleton Loading Rows
                 Array.from({ length: perPage }).map((_, index) => (
                   <tr
                     key={`skeleton-${index}`}
                     className="bg-background border-y border-secondary animate-pulse"
                   >
-                    {/* Nama Kategori Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
                       <div className="h-4 bg-gray-300 rounded-md w-24 mx-auto"></div>
                     </td>
-                    {/* Status Skeleton */}
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="h-4 bg-gray-300 rounded-md w-32 mx-auto"></div>
+                    </td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="h-6 bg-gray-300 rounded-full w-16 mx-auto"></div>
                     </td>
-                    {/* Tanggal Skeleton */}
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="h-4 bg-gray-300 rounded-md w-24 mx-auto"></div>
+                    </td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="h-4 bg-gray-300 rounded-md w-20 mx-auto"></div>
-                    </td>
-                    {/* Aksi Skeleton */}
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="flex gap-2.5 justify-center">
-                        <div className="h-6 w-6 bg-gray-300 rounded"></div>
-                        <div className="h-6 w-6 bg-gray-300 rounded"></div>
-                      </div>
                     </td>
                   </tr>
                 ))
               ) : currentItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 sm:px-6 py-8 text-center text-text"
                   >
                     {filteredData.length === 0 && datas.length > 0
@@ -396,28 +400,23 @@ export default function CategoryPage() {
                     key={data.id || idx}
                     className="bg-background text-sm font-medium text-text text-center border-y border-secondary"
                   >
-                    <td className="px-4 sm:px-6 py-4 uppercase whitespace-nowrap">
-                      {data.kategori}
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {data.nama_kategori}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                              ${
-                                data.status === "aktif"
-                                  ? "bg-green-500 text-green-100 border border-green-800"
-                                  : data.status === "non-aktif"
-                                  ? "bg-red-900/50 text-red-300 border border-red-800"
-                                  : data.status === "transfer"
-                                  ? "bg-blue-900/50 text-blue-300 border border-blue-800"
-                                  : "bg-gray-800/50 text-gray-300 border border-gray-700"
-                              }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          data.status === "aktif"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
-                        {data.status}
+                        {data.status === "aktif" ? "Aktif" : "Non-aktif"}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.createdAt
-                        ? new Date(data.createdAt).toLocaleDateString()
+                      {data.created_at
+                        ? new Date(data.created_at).toLocaleDateString("id-ID")
                         : "—"}
                     </td>
                     <td className="px-4 sm:px-6 py-4">
@@ -432,20 +431,21 @@ export default function CategoryPage() {
                         <Link href={`/admin/categories/barang/${data.id}`}>
                           <button
                             className="text-blue-600 hover:text-blue-800 cursor-pointer"
-                            title="Lihat Barang"
+                            title="Lihat Subkategori"
                           >
                             <Eye />
                           </button>
                         </Link>
+                        {/* <Link href={`/admin/products?kategori_id=${data.id}`}>
+                          <button
+                            className="text-green-600 hover:text-green-800 cursor-pointer"
+                            title="Lihat Aset"
+                          >
+                            <Package />
+                          </button>
+                        </Link> */}
                         <button
-                          onClick={() =>
-                            handleDeleteIdCategory({
-                              id: data.id,
-                              kategori: data.kategori,
-                              status: data.status,
-                              createdAt: data.createdAt,
-                            })
-                          }
+                          onClick={() => handleDeleteIdCategory(data)}
                           className="text-red-600 hover:text-red-800 cursor-pointer"
                           title="Hapus"
                         >
@@ -524,7 +524,7 @@ export default function CategoryPage() {
         <DeleteConfirmationModal
           isOpen={deleteModal}
           onClose={() => setDeleteModal(false)}
-          itemName={categoryIdToDelete.kategori}
+          itemName={categoryIdToDelete.nama_kategori}
           onConfirm={() => handleDeleteCategory(categoryIdToDelete.id)}
         />
       )}
@@ -534,7 +534,9 @@ export default function CategoryPage() {
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleUpdateCategory}
           initialData={{
-            kategori: categoryToEdit.kategori,
+            kode_kategori: categoryToEdit.kode_kategori,
+            nama_kategori: categoryToEdit.nama_kategori,
+            deskripsi: categoryToEdit.deskripsi || "",
             status: categoryToEdit.status,
           }}
         />

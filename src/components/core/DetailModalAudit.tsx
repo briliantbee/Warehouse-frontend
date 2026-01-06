@@ -14,7 +14,6 @@ const DetailAuditModal: React.FC<DetailAuditModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-
   return (
     <AnimatePresence>
       <motion.div
@@ -24,7 +23,7 @@ const DetailAuditModal: React.FC<DetailAuditModalProps> = ({
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="relative bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 text-white rounded-3xl shadow-2xl p-8 w-full max-w-lg border border-gray-700"
+          className="relative bg-linear-to-br from-gray-100 via-gray-200 to-gray-100 text-white rounded-3xl shadow-2xl p-8 w-full max-w-lg border border-gray-700"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}

@@ -38,12 +38,10 @@ export default function Layout({
   children,
   stock,
   stockPieChart,
-  auditLogTable,
 }: {
   children: React.ReactNode;
   stock: React.ReactNode;
   stockPieChart: React.ReactNode;
-  auditLogTable: React.ReactNode;
 }) {
   return (
     <>
@@ -63,7 +61,6 @@ export default function Layout({
             </div>
             <div className="xl:col-span-1">{stockPieChart}</div>
           </div>
-          {auditLogTable}
         </div>
       </div>
     </>

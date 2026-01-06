@@ -18,6 +18,7 @@ import Footer from "@/components/ui/footer";
 import Cookies from "js-cookie";
 import { useUser } from "@/context/UserContext";
 import { useState } from "react";
+import Logo from "../../public/umkm.png";
 
 const datas = [
   {
@@ -60,12 +61,14 @@ export default function Home() {
       <header>
         <nav className="bg-background flex justify-between items-center px-4 sm:px-6 py-4 shadow-custom relative z-50">
           <div className="flex items-center">
-            <div className="p-2 bg-primary rounded-sm text-white mr-2">
-              <Warehouse className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div className="text-text font-semibold text-lg sm:text-xl md:text-2xl">
-              <span className="hidden sm:inline">Warehouse Management</span>
-              <span className="sm:hidden">WMS</span>
+            <div className="p-2 text-white mr-2">
+              <Image
+                src={Logo}
+                height={200}
+                width={200}
+                alt="logo"
+                className="mr-1.5 object-contain"
+              />{" "}
             </div>
           </div>
 
@@ -121,11 +124,11 @@ export default function Home() {
 
       {/* Hero Section - Responsive */}
       <div className="flex flex-col items-center justify-center my-8 sm:my-12 md:my-16 px-4 animate-fade-in">
-        <h1 className="font-bold text-2xl sm:text-3xl md:text-4xl text-secondary mb-2 sm:mb-4 text-center">
-          Warehouse Management
+        <h1 className="font-bold text-xl sm:text-3xl md:text-4xl text-secondary mb-2 sm:mb-4 text-center">
+          Barang Milik Negara (BMN)
         </h1>
-        <h2 className="text-primary font-bold text-3xl sm:text-4xl md:text-5xl text-center">
-          Warehouse App
+        <h2 className="text-primary font-bold text-xl sm:text-4xl md:text-2xl text-center">
+          Deputi Bidang Kewirausahaan - Kementerian UMKM Republik Indonesia
         </h2>
       </div>
 

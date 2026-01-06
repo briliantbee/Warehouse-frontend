@@ -143,11 +143,11 @@ export default function Sidebar() {
             {/* <li>
               <Link
                 href="/admin/products"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                  pathname === "/admin/products"
-                    ? "bg-primary text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`flex items-coducts"
+                    ? "bg-primary text-whitenter gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                  pathname === "/admin/pre-gray-100"
+                }`}"
+                    : "text-gray-700 hover:bg
               >
                 <div className="flex items-center gap-3">
                   <ClipboardList className="w-5 h-5" />
@@ -157,7 +157,7 @@ export default function Sidebar() {
             </li> */}
 
             {/* Dropdown Stock Barang */}
-            <li>
+            {/* <li>
               <Link
                 href="/admin/stock"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
@@ -171,7 +171,7 @@ export default function Sidebar() {
                   Stock Barang
                 </div>
               </Link>
-            </li>
+            </li> */}
 
             <li>
               <Link
@@ -198,34 +198,6 @@ export default function Sidebar() {
               >
                 <Briefcase className="w-5 h-5" />
                 Jabatan
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                href="/admin/audit"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                  pathname === "/admin/audit"
-                    ? "bg-[#2563EB] text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Scroll className="w-5 h-5" />
-                Audit Log
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                href="/admin/aktivitas"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                  pathname === "/admin/aktivitas"
-                    ? "bg-[#2563EB] text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <WatchIcon className="w-5 h-5" />
-                Log Aktivitas
               </Link>
             </li>
           </ul>

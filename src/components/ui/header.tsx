@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Logo from "../../../public/assets/logo.png";
+import Logo from "../../../public/umkm.png";
 import Person from "../../../public/assets/person.png";
 import { Bell } from "lucide-react";
 import { useUser } from "@/context/UserContext";
@@ -38,7 +38,6 @@ export default function Header() {
             alt="logo"
             className="w-8 mr-1.5"
           />
-          Warehouse Management
         </div>
 
         {/* Profil */}
@@ -57,12 +56,11 @@ export default function Header() {
       <div className="hidden md:flex space-x-2 text-xl font-semibold text-gray-800">
         <Image
           src={Logo}
-          height={50}
-          width={50}
+          height={200}
+          width={200}
           alt="logo"
-          className="w-8 mr-1.5"
+          className="mr-1.5 object-contain"
         />
-        Warehouse Management
       </div>
 
       {/* Profil */}
