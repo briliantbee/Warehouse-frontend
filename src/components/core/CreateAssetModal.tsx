@@ -94,8 +94,8 @@ const customSelectStyles = {
     backgroundColor: state.isSelected
       ? "#3b82f6"
       : state.isFocused
-      ? "#eff6ff"
-      : "white",
+        ? "#eff6ff"
+        : "white",
     color: state.isSelected ? "white" : "#1f2937",
   }),
 };
@@ -236,7 +236,7 @@ export default function CreateAssetModal({
 
         // Filter subkategori
         const filtered = subkategoriList.filter(
-          (sub: any) => sub.kategori_aset_id?.toString() === defaultKategoriId
+          (sub: any) => sub.kategori_aset_id?.toString() === defaultKategoriId,
         );
         setFilteredSubkategori(filtered);
 
@@ -247,7 +247,7 @@ export default function CreateAssetModal({
           // Filter detail kategori
           const filteredDetail = detailKategoriList.filter(
             (detail: any) =>
-              detail.subkategori_aset_id?.toString() === defaultSubkategoriId
+              detail.subkategori_aset_id?.toString() === defaultSubkategoriId,
           );
           setFilteredDetailKategori(filteredDetail);
 
@@ -274,7 +274,7 @@ export default function CreateAssetModal({
 
     if (kategoriId && subkategoriList.length > 0) {
       const filtered = subkategoriList.filter(
-        (sub: any) => sub.kategori_aset_id?.toString() === kategoriId
+        (sub: any) => sub.kategori_aset_id?.toString() === kategoriId,
       );
       setFilteredSubkategori(filtered);
 
@@ -299,7 +299,7 @@ export default function CreateAssetModal({
     if (subkategoriId && detailKategoriList.length > 0) {
       const filtered = detailKategoriList.filter(
         (detail: any) =>
-          detail.subkategori_aset_id?.toString() === subkategoriId
+          detail.subkategori_aset_id?.toString() === subkategoriId,
       );
       setFilteredDetailKategori(filtered);
 
@@ -307,7 +307,7 @@ export default function CreateAssetModal({
       const currentDetail = form.getValues("detail_kategori_aset_id");
       if (currentDetail && currentDetail !== defaultDetailKategoriId) {
         const isValid = filtered.some(
-          (detail: any) => detail.value === currentDetail
+          (detail: any) => detail.value === currentDetail,
         );
         if (!isValid) {
           form.setValue("detail_kategori_aset_id", "");
@@ -368,6 +368,7 @@ export default function CreateAssetModal({
           </div>
 
           {/* Selected Categories Display */}
+          {/* Selected Categories Display - TANPA KURUNG KOSONG */}
           {(defaultKategoriId ||
             defaultSubkategoriId ||
             defaultDetailKategoriId) && (
@@ -381,13 +382,16 @@ export default function CreateAssetModal({
                   <div className="bg-white rounded-lg p-3 border border-blue-100">
                     <p className="text-xs text-gray-600 mb-1">Kategori</p>
                     <p className="font-bold text-gray-900 text-sm">
-                      {kategoriList.length > 0
-                        ? kategoriList.find(
-                            (k) =>
-                              k.value.toString() ===
-                              defaultKategoriId.toString()
-                          )?.label || "Tidak ditemukan"
-                        : "Loading..."}
+                      {(() => {
+                        const found = kategoriList.find(
+                          (k) =>
+                            k.value.toString() === defaultKategoriId.toString(),
+                        );
+                        return (
+                          found?.label?.replace(/\s*\(\)\s*$/, "").trim() ||
+                          "Loading..."
+                        );
+                      })()}
                     </p>
                   </div>
                 )}
@@ -395,13 +399,17 @@ export default function CreateAssetModal({
                   <div className="bg-white rounded-lg p-3 border border-blue-100">
                     <p className="text-xs text-gray-600 mb-1">Subkategori</p>
                     <p className="font-bold text-gray-900 text-sm">
-                      {subkategoriList.length > 0
-                        ? subkategoriList.find(
-                            (s) =>
-                              s.value.toString() ===
-                              defaultSubkategoriId.toString()
-                          )?.label || "Tidak ditemukan"
-                        : "Loading..."}
+                      {(() => {
+                        const found = subkategoriList.find(
+                          (s) =>
+                            s.value.toString() ===
+                            defaultSubkategoriId.toString(),
+                        );
+                        return (
+                          found?.label?.replace(/\s*\(\)\s*$/, "").trim() ||
+                          "Loading..."
+                        );
+                      })()}
                     </p>
                   </div>
                 )}
@@ -411,20 +419,23 @@ export default function CreateAssetModal({
                       Detail Kategori
                     </p>
                     <p className="font-bold text-gray-900 text-sm">
-                      {detailKategoriList.length > 0
-                        ? detailKategoriList.find(
-                            (d) =>
-                              d.value.toString() ===
-                              defaultDetailKategoriId.toString()
-                          )?.label || "Tidak ditemukan"
-                        : "Loading..."}
+                      {(() => {
+                        const found = detailKategoriList.find(
+                          (d) =>
+                            d.value.toString() ===
+                            defaultDetailKategoriId.toString(),
+                        );
+                        return (
+                          found?.label?.replace(/\s*\(\)\s*$/, "").trim() ||
+                          "Loading..."
+                        );
+                      })()}
                     </p>
                   </div>
                 )}
               </div>
             </div>
           )}
-
           <form
             onSubmit={form.handleSubmit(async (values) => {
               try {
@@ -439,7 +450,7 @@ export default function CreateAssetModal({
                 setSubmitError(
                   error instanceof Error
                     ? error.message
-                    : "Terjadi kesalahan saat menyimpan data"
+                    : "Terjadi kesalahan saat menyimpan data",
                 );
               } finally {
                 setIsSubmitting(false);
@@ -510,7 +521,7 @@ export default function CreateAssetModal({
             </div>
 
             {/* Kategori */}
-            <div className="border-b pb-4">
+            <div className="border-b pb-4 hidden">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Tag className="w-5 h-5" />
                 Kategori
@@ -823,7 +834,7 @@ export default function CreateAssetModal({
                         options={entitasList}
                         value={
                           entitasList.find(
-                            (opt) => String(opt.value) === String(field.value)
+                            (opt) => String(opt.value) === String(field.value),
                           ) || null
                         }
                         onChange={(option) => {
@@ -855,7 +866,7 @@ export default function CreateAssetModal({
                         options={satkerList}
                         value={
                           satkerList.find(
-                            (opt) => String(opt.value) === String(field.value)
+                            (opt) => String(opt.value) === String(field.value),
                           ) || null
                         }
                         onChange={(option) => {
@@ -887,7 +898,7 @@ export default function CreateAssetModal({
                         options={unitEselonList}
                         value={
                           unitEselonList.find(
-                            (opt) => String(opt.value) === String(field.value)
+                            (opt) => String(opt.value) === String(field.value),
                           ) || null
                         }
                         onChange={(option) => {
@@ -919,7 +930,7 @@ export default function CreateAssetModal({
                         options={penanggungJawabList}
                         value={
                           penanggungJawabList.find(
-                            (opt) => String(opt.value) === String(field.value)
+                            (opt) => String(opt.value) === String(field.value),
                           ) || null
                         }
                         onChange={(option) => {
@@ -1068,14 +1079,14 @@ export default function CreateAssetModal({
                                 ];
                                 if (!validTypes.includes(file.type)) {
                                   alert(
-                                    "Format file tidak valid. Gunakan JPG, PNG, GIF, atau BMP."
+                                    "Format file tidak valid. Gunakan JPG, PNG, GIF, atau BMP.",
                                   );
                                   return;
                                 }
                                 // Validate file size (2MB)
                                 if (file.size > 2048 * 1024) {
                                   alert(
-                                    "Ukuran file terlalu besar. Maksimal 2MB."
+                                    "Ukuran file terlalu besar. Maksimal 2MB.",
                                   );
                                   return;
                                 }
