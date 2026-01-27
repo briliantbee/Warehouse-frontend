@@ -1,182 +1,173 @@
 "use client";
 
-import {
-  Users,
-  UserCheck,
-  UserX,
-  ChartPie,
-  Search,
-  SquarePen,
-  Trash,
-  Download,
-  FolderInput,
-  Eye,
-  Shield,
-} from "lucide-react";
+import { Search, SquarePen, Trash, Download, FolderInput } from "lucide-react";
 import { useEffect, useState } from "react";
-import { User } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 import toast, { Toaster } from "react-hot-toast";
 import z from "zod";
-// import { createUser, deleteUser, updateUser } from "@/app/lib/api/user/route";
-import { createUser, deleteUser, updateUser } from "@/lib/api/user/route";
+import {
+  getPenanggungJawabAset,
+  createPenanggungJawabAset,
+  updatePenanggungJawabAset,
+  deletePenanggungJawabAset,
+  PenanggungJawabAset,
+  PenanggungJawabAsetFormData,
+} from "@/lib/api/penanggungjawab/route";
 import DeleteConfirmationModal from "@/components/core/Delete.Modal";
 import CreateUserModal from "@/components/core/CreateUserModal";
 import EditUserModal from "@/components/core/EditUserModal";
 
-const userFormSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, "Nama wajib diisi")
-      .min(2, "Nama minimal 2 karakter")
-      .max(50, "Nama maksimal 50 karakter")
-      .regex(/^[a-zA-Z\s]+$/, "Nama hanya boleh berisi huruf dan spasi"),
+const penanggungJawabSchema = z.object({
+  nama_pic: z
+    .string()
+    .min(1, "Nama wajib diisi")
+    .min(2, "Nama minimal 2 karakter")
+    .max(100, "Nama maksimal 100 karakter"),
 
-    email: z
-      .string()
-      .min(1, "Email wajib diisi")
-      .email("Format email tidak valid")
-      .max(100, "Email maksimal 100 karakter"),
+  nip: z
+    .string()
+    .min(1, "NIP wajib diisi")
+    .regex(/^[0-9]+$/, "NIP hanya boleh berisi angka"),
 
-    password: z
-      .string()
-      .min(1, "Password wajib diisi")
-      .min(8, "Password minimal 8 karakter")
-      .max(100, "Password maksimal 100 karakter")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka"
-      ),
+  jabatan: z
+    .string()
+    .min(1, "Jabatan wajib diisi")
+    .max(100, "Jabatan maksimal 100 karakter"),
 
-    password_confirmation: z.string().min(1, "Konfirmasi password wajib diisi"),
+  email: z
+    .string()
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid")
+    .max(100, "Email maksimal 100 karakter"),
 
-    role: z
-      .string()
-      .min(1, "Role wajib dipilih")
-      .refine((val) => ["superadmin", "admingudang"].includes(val), {
-        message: "Role tidak valid",
-      }),
+  telepon: z
+    .string()
+    .min(1, "Telepon wajib diisi")
+    .regex(/^[0-9+\-\s()]+$/, "Format telepon tidak valid"),
 
-    jabatan_id: z.coerce
-      .number()
-      .int("Jabatan ID harus berupa bilangan bulat")
-      .positive("Jabatan ID harus berupa angka positif"),
+  unit_eselon_ii_id: z.coerce
+    .number()
+    .int("Unit Eselon II ID harus berupa bilangan bulat")
+    .positive("Unit Eselon II ID harus berupa angka positif"),
 
-    divisi_id: z.coerce
-      .number()
-      .int("Divisi ID harus berupa bilangan bulat")
-      .positive("Divisi ID harus berupa angka positif"),
-  })
-  .superRefine(({ password_confirmation, password }, ctx) => {
-    if (password_confirmation !== password) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Konfirmasi password tidak sesuai",
-        path: ["password_confirmation"],
-      });
-    }
-  });
+  status: z
+    .string()
+    .min(1, "Status wajib dipilih")
+    .refine((val) => ["aktif", "tidak_aktif"].includes(val), {
+      message: "Status tidak valid",
+    }),
 
-type UserFormSchema = z.infer<typeof userFormSchema>;
+  user_id: z.coerce.number().optional(),
+});
+
+type PenanggungJawabFormSchema = z.infer<typeof penanggungJawabSchema>;
 
 export default function UserPage() {
-  const [datas, setData] = useState<User[]>([]);
+  const [datas, setData] = useState<PenanggungJawabAset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [roleFilter, setRoleFilter] = useState("-");
-  const [divisiFilter, setDivisiFilter] = useState("-");
+  const [statusFilter, setStatusFilter] = useState("-");
+  const [unitEselonFilter, setUnitEselonFilter] = useState("-");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [userIdToDelete, setUserIdToDelete] = useState<User | null>(null);
-  const [perPage] = useState(5); // Menampilkan 5 data per halaman
-  const [filteredData, setFilteredData] = useState<User[]>([]);
+  const [userIdToDelete, setUserIdToDelete] =
+    useState<PenanggungJawabAset | null>(null);
+  const [perPage] = useState(5);
+  const [filteredData, setFilteredData] = useState<PenanggungJawabAset[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [userToEdit, setUserToEdit] = useState<User | null>(null);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToEdit, setUserToEdit] = useState<PenanggungJawabAset | null>(
+    null,
+  );
+  const [selectedUser, setSelectedUser] = useState<PenanggungJawabAset | null>(
+    null,
+  );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Hitung statistik berdasarkan data yang sudah difilter
   const totalUsers = datas.length;
-  const superAdminUsers = datas.filter((u) => u.role === "superadmin").length;
-  const adminGudangUsers = datas.filter((u) => u.role === "admingudang").length;
-  const superAdminPercentage = totalUsers
-    ? ((superAdminUsers / totalUsers) * 100).toFixed(2)
+  const activeUsers = datas.filter((u) => u.status === "aktif").length;
+  const inactiveUsers = datas.filter((u) => u.status === "tidak_aktif").length;
+  const activePercentage = totalUsers
+    ? ((activeUsers / totalUsers) * 100).toFixed(2)
     : 0;
 
-  // Mendapatkan daftar divisi unik untuk dropdown filter
-  const uniqueDivisi = Array.from(
-    new Set(datas.map((user) => user.divisi.divisi))
+  // Mendapatkan daftar unit eselon unik untuk dropdown filter
+  const uniqueUnitEselon = Array.from(
+    new Set(datas.map((user) => user.unitEselonIi?.nama_unit)),
   ).filter(Boolean);
 
-  // Mendapatkan daftar role unik untuk dropdown filter
-  const uniqueRoles = Array.from(
-    new Set(datas.map((user) => user.role))
+  // Mendapatkan daftar status unik untuk dropdown filter
+  const uniqueStatus = Array.from(
+    new Set(datas.map((user) => user.status)),
   ).filter(Boolean);
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/api/v1/user");
-      setData(response.data.data);
+      const response = await getPenanggungJawabAset({ per_page: "all" });
+      setData(response.data || []);
     } catch (error) {
-      toast.error("Gagal memuat data user");
+      toast.error("Gagal memuat data penanggung jawab aset");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUpdateUser = async (updatedData: any) => {
+  const handleUpdateUser = async (updatedData: PenanggungJawabAsetFormData) => {
     if (!userToEdit || !userToEdit.id) {
-      toast.error("ID user tidak ditemukan");
+      toast.error("ID penanggung jawab tidak ditemukan");
       return;
     }
 
     try {
-      await updateUser(userToEdit.id, updatedData);
-      toast.success("User berhasil diperbarui");
+      await updatePenanggungJawabAset(userToEdit.id, updatedData);
+      toast.success("Penanggung jawab berhasil diperbarui");
       setIsEditModalOpen(false);
       setUserToEdit(null);
       await fetchUsers();
     } catch (error) {
-      toast.error("Gagal memperbarui user");
+      toast.error("Gagal memperbarui penanggung jawab");
     }
   };
 
-  const handleEditUserClick = (user: User) => {
+  const handleEditUserClick = (user: PenanggungJawabAset) => {
     setUserToEdit(user);
     setIsEditModalOpen(true);
   };
 
-  const handleCreateUser = async (newUser: UserFormSchema) => {
+  const handleCreateUser = async (newUser: PenanggungJawabFormSchema) => {
     try {
-      await createUser(newUser);
-      toast.success("Berhasil menambahkan user");
+      await createPenanggungJawabAset(newUser);
+      toast.success("Berhasil menambahkan penanggung jawab");
       fetchUsers();
       setIsModalOpen(false);
     } catch (error) {
-      toast.error("Gagal menambahkan user");
+      toast.error("Gagal menambahkan penanggung jawab");
     }
   };
 
-  const handleDeleteIdUser = async (user: User) => {
+  const handleDeleteIdUser = async (user: PenanggungJawabAset) => {
     setUserIdToDelete(user);
     setDeleteModal(true);
   };
 
   const handleDeleteUser = async (id: number) => {
     try {
-      await deleteUser(id);
-      toast.success("Berhasil menghapus user");
+      await deletePenanggungJawabAset(id);
+      toast.success("Berhasil menghapus penanggung jawab");
       setDeleteModal(false);
       fetchUsers();
-    } catch (error) {
-      toast.error("Gagal menghapus user");
+    } catch (error: any) {
+      if (error.response?.data?.errors?.asets) {
+        toast.error(error.response.data.errors.asets[0]);
+      } else {
+        toast.error("Gagal menghapus penanggung jawab");
+      }
     }
   };
 
-  const openDetailModal = (user: User) => {
+  const openDetailModal = (user: PenanggungJawabAset) => {
     setSelectedUser(user);
     setIsDetailModalOpen(true);
   };
@@ -189,40 +180,42 @@ export default function UserPage() {
   useEffect(() => {
     let filtered = datas;
 
-    // Filter berdasarkan role
-    if (roleFilter !== "-") {
-      filtered = filtered.filter((data) => data.role === roleFilter);
+    // Filter berdasarkan status
+    if (statusFilter !== "-") {
+      filtered = filtered.filter((data) => data.status === statusFilter);
     }
 
-    // Filter berdasarkan divisi
-    if (divisiFilter !== "-") {
-      filtered = filtered.filter((data) => data.divisi.divisi === divisiFilter);
+    // Filter berdasarkan unit eselon
+    if (unitEselonFilter !== "-") {
+      filtered = filtered.filter(
+        (data) => data.unitEselonIi?.nama_unit === unitEselonFilter,
+      );
     }
 
     // Filter berdasarkan pencarian
     if (searchTerm.trim() !== "") {
       filtered = filtered.filter(
         (data) =>
-          data.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          data.nama_pic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          data.nip.toLowerCase().includes(searchTerm.toLowerCase()) ||
           data.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.jabatan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          data.divisi.divisi.toLowerCase().includes(searchTerm.toLowerCase())
+          data.jabatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          data.telepon.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
     setFilteredData(filtered);
-    setCurrentPage(1); // Reset ke halaman pertama saat filter berubah
-  }, [roleFilter, divisiFilter, searchTerm, datas]);
+    setCurrentPage(1);
+  }, [statusFilter, unitEselonFilter, searchTerm, datas]);
 
-  // Handle perubahan filter role
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRoleFilter(e.target.value);
+  // Handle perubahan filter status
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
   };
 
-  // Handle perubahan filter divisi
-  const handleDivisiChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDivisiFilter(e.target.value);
+  // Handle perubahan filter unit eselon
+  const handleUnitEselonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setUnitEselonFilter(e.target.value);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,27 +252,15 @@ export default function UserPage() {
     return pageNumbers;
   };
 
-  // Format role display
-  const formatRole = (role: string) => {
-    switch (role) {
-      case "superadmin":
-        return "Super Admin";
-      case "admingudang":
-        return "Admin Gudang";
+  // Format status display
+  const formatStatus = (status: string) => {
+    switch (status) {
+      case "aktif":
+        return "Aktif";
+      case "tidak_aktif":
+        return "Tidak Aktif";
       default:
-        return role;
-    }
-  };
-
-  // Get role badge color
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "superadmin":
-        return "bg-purple-500 text-purple-100 border border-purple-800";
-      case "admingudang":
-        return "bg-blue-500 text-blue-100 border border-blue-800";
-      default:
-        return "bg-gray-500 text-gray-100 border border-gray-800";
+        return status;
     }
   };
 
@@ -289,8 +270,12 @@ export default function UserPage() {
       <div className="mt-20 p-4">
         <div className="flex items-center justify-between mb-6">
           <div className="">
-            <h1 className="text-3xl font-bold text-primary">Data User</h1>
-            <p className="mt-4 text-gray-800">Kelola data user sistem anda.</p>
+            <h1 className="text-3xl font-bold text-primary">
+              Manajemen Penanggung Jawab Aset
+            </h1>
+            <p className="mt-4 text-gray-800">
+              Kelola data penanggung jawab aset sistem anda.
+            </p>
           </div>
 
           <div className="">
@@ -298,132 +283,45 @@ export default function UserPage() {
               onClick={() => setIsModalOpen(true)}
               className="px-4 py-2 bg-primary text-white rounded-md cursor-pointer hover:bg-primary/90 transition-colors"
             >
-              Tambah User +
+              Tambah Penanggung Jawab +
             </button>
           </div>
         </div>
       </div>
 
-      {/* Card Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-5">
-        {isLoading ? (
-          // Skeleton Cards
-          Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={`card-skeleton-${index}`}
-              className="bg-white rounded-lg shadow-md border p-5 animate-pulse"
-            >
-              <div className="flex justify-between">
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-300 rounded w-24 mb-3"></div>
-                  <div className="h-6 bg-gray-300 rounded w-12"></div>
-                </div>
-                <div className="bg-gray-300 p-4 rounded-sm w-16 h-16"></div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <>
-            {/* Card 1 - Total User */}
-            <div className="bg-white rounded-lg shadow-md border p-5">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-text font-medium text-sm">Total User</h3>
-                  <p className="text-text font-medium text-xl pt-2.5">
-                    {totalUsers}
-                  </p>
-                </div>
-                <div className="bg-primary p-4 rounded-sm text-background">
-                  <Users className="w-8 h-8" />
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2 - Super Admin */}
-            <div className="bg-white rounded-lg shadow-md border p-5">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-text font-medium text-sm">Super Admin</h3>
-                  <p className="text-text font-medium text-xl pt-2.5">
-                    {superAdminUsers}
-                  </p>
-                </div>
-                <div className="bg-purple-500 p-4 rounded-sm text-white">
-                  <Shield className="w-8 h-8" />
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3 - Admin Gudang */}
-            <div className="bg-white rounded-lg shadow-md border p-5">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-text font-medium text-sm">
-                    Admin Gudang
-                  </h3>
-                  <p className="text-text font-medium text-xl pt-2.5">
-                    {adminGudangUsers}
-                  </p>
-                </div>
-                <div className="bg-blue-500 p-4 rounded-sm text-white">
-                  <UserCheck className="w-8 h-8" />
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4 - Persentase Super Admin */}
-            <div className="bg-white rounded-lg shadow-md border p-5">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-text font-medium text-sm">
-                    Persentase Super Admin
-                  </h3>
-                  <p className="text-text font-medium text-xl pt-2.5">
-                    {superAdminPercentage}%
-                  </p>
-                </div>
-                <div className="bg-primary p-4 rounded-sm text-background">
-                  <ChartPie className="w-8 h-8" />
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Filter Section */}
-      <div className="bg-background mx-2 sm:mx-6 my-6 sm:my-9 border border-secondary rounded-lg px-3 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center flex-wrap gap-4 sm:gap-6 shadow-md">
+      <div className="bg-background mx-2 sm:mx-6 mb-6 sm:mb-9 border border-secondary rounded-lg px-3 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center flex-wrap gap-4 sm:gap-6 shadow-md">
         <div className="lg:flex lg:items-center grid gap-3">
           <h1 className="text-sm font-medium text-text">Filter:</h1>
 
-          {/* Filter Role */}
+          {/* Filter Status */}
           <select
-            name="role-filter"
-            id="role-filter"
-            value={roleFilter}
-            onChange={handleRoleChange}
+            name="status-filter"
+            id="status-filter"
+            value={statusFilter}
+            onChange={handleStatusChange}
             className="border border-secondary px-3 sm:px-4 py-2 rounded-sm text-text font-medium text-sm"
           >
-            <option value="-">Semua Role</option>
-            {uniqueRoles.map((role, index) => (
-              <option key={index} value={role}>
-                {formatRole(role)}
+            <option value="-">Semua Status</option>
+            {uniqueStatus.map((status, index) => (
+              <option key={index} value={status}>
+                {formatStatus(status)}
               </option>
             ))}
           </select>
 
-          {/* Filter Divisi */}
+          {/* Filter Unit Eselon */}
           <select
-            name="divisi-filter"
-            id="divisi-filter"
-            value={divisiFilter}
-            onChange={handleDivisiChange}
+            name="unit-eselon-filter"
+            id="unit-eselon-filter"
+            value={unitEselonFilter}
+            onChange={handleUnitEselonChange}
             className="border border-secondary px-3 sm:px-4 py-2 rounded-sm text-text font-medium text-sm"
           >
-            <option value="-">Semua Divisi</option>
-            {uniqueDivisi.map((divisi, index) => (
-              <option key={index} value={divisi}>
-                {divisi}
+            <option value="-">Semua Unit Eselon</option>
+            {uniqueUnitEselon.map((unit, index) => (
+              <option key={index} value={unit}>
+                {unit}
               </option>
             ))}
           </select>
@@ -437,7 +335,7 @@ export default function UserPage() {
             id="search"
             value={searchTerm}
             onChange={handleSearchChange}
-            placeholder="Cari nama, email, role, jabatan, atau divisi..."
+            placeholder="Cari nama, NIP, email, jabatan, atau telepon..."
             className="border border-secondary px-3 sm:px-4 py-2 rounded-sm font-medium text-sm flex-1"
           />
           <button
@@ -452,7 +350,9 @@ export default function UserPage() {
       {/* Table Section */}
       <div className="bg-background border border-secondary rounded-lg mx-2 sm:mx-6 mb-6">
         <div className="flex justify-between items-center mx-4 sm:mx-6 py-6">
-          <h2 className="font-medium text-text text-2xl">Data User</h2>
+          <h2 className="font-medium text-text text-2xl">
+            Data Penanggung Jawab
+          </h2>
           <div className="flex items-center gap-3">
             <button className="bg-secondary text-white p-2 rounded-sm hover:bg-secondary/80 transition-colors">
               <Download className="w-5 h-5" />
@@ -468,22 +368,22 @@ export default function UserPage() {
             <thead className="bg-text/15">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  NAMA
+                  NAMA PIC
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  EMAIL
-                </th>
-                <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  ROLE
+                  NIP
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
                   JABATAN
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  DIVISI
+                  EMAIL
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
-                  TANGGAL DIBUAT
+                  TELEPON
+                </th>
+                <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
+                  STATUS
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-xs text-secondary whitespace-nowrap">
                   AKSI
@@ -499,32 +399,31 @@ export default function UserPage() {
                   >
                     {/* Nama Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="h-4 bg-gray-300 rounded-md w-20 mx-auto"></div>
+                      <div className="h-4 bg-gray-300 rounded-md w-24 mx-auto"></div>
                     </td>
-                    {/* Email Skeleton */}
+                    {/* NIP Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="h-4 bg-gray-300 rounded-md w-32 mx-auto"></div>
-                    </td>
-                    {/* Role Skeleton */}
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="h-6 bg-gray-300 rounded-full w-20 mx-auto"></div>
+                      <div className="h-4 bg-gray-300 rounded-md w-28 mx-auto"></div>
                     </td>
                     {/* Jabatan Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
                       <div className="h-4 bg-gray-300 rounded-md w-24 mx-auto"></div>
                     </td>
-                    {/* Divisi Skeleton */}
+                    {/* Email Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="h-4 bg-gray-300 rounded-md w-28 mx-auto"></div>
+                      <div className="h-4 bg-gray-300 rounded-md w-32 mx-auto"></div>
                     </td>
-                    {/* Tanggal Skeleton */}
+                    {/* Telepon Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="h-4 bg-gray-300 rounded-md w-20 mx-auto"></div>
+                      <div className="h-4 bg-gray-300 rounded-md w-24 mx-auto"></div>
+                    </td>
+                    {/* Status Skeleton */}
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="h-4 bg-gray-300 rounded-md w-16 mx-auto"></div>
                     </td>
                     {/* Aksi Skeleton */}
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex gap-2.5 justify-center">
-                        <div className="h-6 w-6 bg-gray-300 rounded"></div>
                         <div className="h-6 w-6 bg-gray-300 rounded"></div>
                         <div className="h-6 w-6 bg-gray-300 rounded"></div>
                       </div>
@@ -539,7 +438,7 @@ export default function UserPage() {
                   >
                     {filteredData.length === 0 && datas.length > 0
                       ? "Tidak ada data yang sesuai dengan filter"
-                      : "Tidak ada data user"}
+                      : "Tidak ada data penanggung jawab"}
                   </td>
                 </tr>
               ) : (
@@ -549,45 +448,33 @@ export default function UserPage() {
                     className="bg-background text-sm font-medium text-text text-center border-y border-secondary hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap font-semibold">
-                      {data.name}
+                      {data.nama_pic}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {data.nip}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {data.jabatan}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       {data.email}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {data.telepon}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(
-                          data.role
-                        )}`}
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          data.status === "aktif"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
-                        {formatRole(data.role)}
+                        {formatStatus(data.status)}
                       </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.jabatan.name}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="text-center">
-                        <div className="font-medium">{data.divisi.divisi}</div>
-                        <div className="text-xs text-gray-500">
-                          {data.divisi.kodedivisi}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {data.createdAt
-                        ? new Date(data.createdAt).toLocaleDateString("id-ID")
-                        : "—"}
                     </td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex gap-2.5 justify-center">
-                        {/* <button
-                          onClick={() => openDetailModal(data)}
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button> */}
                         <button
                           onClick={() => handleEditUserClick(data)}
                           className="text-yellow-600 hover:text-yellow-800 transition-colors"
@@ -618,7 +505,7 @@ export default function UserPage() {
               <h3 className="text-sm sm:text-base">
                 Menampilkan {indexOfFirstItem + 1}-
                 {Math.min(indexOfLastItem, filteredData.length)} dari{" "}
-                {filteredData.length} user
+                {filteredData.length} penanggung jawab
               </h3>
             </div>
 
@@ -670,7 +557,7 @@ export default function UserPage() {
         <DeleteConfirmationModal
           isOpen={deleteModal}
           onClose={() => setDeleteModal(false)}
-          itemName={userIdToDelete.name}
+          itemName={userIdToDelete.nama_pic}
           onConfirm={() => handleDeleteUser(userIdToDelete.id)}
         />
       )}
@@ -692,14 +579,6 @@ export default function UserPage() {
           userData={userToEdit}
         />
       )}
-      {/* Detail User Modal */}
-      {/* {isDetailModalOpen && selectedUser && (
-        <DetailUserModal
-          isOpen={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
-          user={selectedUser}
-        />
-      )} */}
     </>
   );
 }

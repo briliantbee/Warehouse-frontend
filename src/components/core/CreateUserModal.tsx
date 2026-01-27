@@ -6,76 +6,69 @@ import {
   Send,
   X,
   Mail,
-  Lock,
-  UserCheck,
+  Phone,
   Building,
   Briefcase,
-  Eye,
-  EyeOff,
+  IdCard,
+  CheckCircle,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Jabatan, Divisi } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 
-// User form schema
-const userFormSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, "Nama wajib diisi")
-      .min(2, "Nama minimal 2 karakter")
-      .max(50, "Nama maksimal 50 karakter")
-      .regex(/^[a-zA-Z\s]+$/, "Nama hanya boleh berisi huruf dan spasi"),
+// Penanggung Jawab form schema
+const penanggungJawabFormSchema = z.object({
+  nama_pic: z
+    .string()
+    .min(1, "Nama wajib diisi")
+    .min(2, "Nama minimal 2 karakter")
+    .max(100, "Nama maksimal 100 karakter"),
 
-    email: z
-      .string()
-      .min(1, "Email wajib diisi")
-      .email("Format email tidak valid")
-      .max(100, "Email maksimal 100 karakter"),
+  nip: z
+    .string()
+    .min(1, "NIP wajib diisi")
+    .regex(/^[0-9]+$/, "NIP hanya boleh berisi angka"),
 
-    password: z
-      .string()
-      .min(1, "Password wajib diisi")
-      .min(8, "Password minimal 8 karakter")
-      .max(100, "Password maksimal 100 karakter")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka"
-      ),
+  jabatan: z
+    .string()
+    .min(1, "Jabatan wajib diisi")
+    .max(100, "Jabatan maksimal 100 karakter"),
 
-    password_confirmation: z.string().min(1, "Konfirmasi password wajib diisi"),
+  email: z
+    .string()
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid")
+    .max(100, "Email maksimal 100 karakter"),
 
-    role: z
-      .string()
-      .min(1, "Role wajib dipilih")
-      .refine((val) => ["superadmin", "admingudang"].includes(val), {
-        message: "Role tidak valid",
-      }),
+  telepon: z
+    .string()
+    .min(1, "Telepon wajib diisi")
+    .regex(/^[0-9+\-\s()]+$/, "Format telepon tidak valid"),
 
-    jabatan_id: z.coerce
-      .number()
-      .int("Jabatan ID harus berupa bilangan bulat")
-      .positive("Jabatan ID harus berupa angka positif"),
+  unit_eselon_ii_id: z.coerce
+    .number()
+    .int("Unit Eselon II ID harus berupa bilangan bulat")
+    .positive("Unit Eselon II ID harus berupa angka positif"),
 
-    divisi_id: z.coerce
-      .number()
-      .int("Divisi ID harus berupa bilangan bulat")
-      .positive("Divisi ID harus berupa angka positif"),
-  })
-  .superRefine(({ password_confirmation, password }, ctx) => {
-    if (password_confirmation !== password) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Konfirmasi password tidak sesuai",
-        path: ["password_confirmation"],
-      });
-    }
-  });
+  status: z
+    .string()
+    .min(1, "Status wajib dipilih")
+    .refine((val) => ["aktif", "tidak_aktif"].includes(val), {
+      message: "Status tidak valid",
+    }),
 
-type UserFormSchema = z.infer<typeof userFormSchema>;
+  user_id: z.coerce.number().optional(),
+});
+
+type PenanggungJawabFormSchema = z.infer<typeof penanggungJawabFormSchema>;
+
+interface UnitEselonII {
+  id: number;
+  kode_unit: string;
+  nama_unit: string;
+}
 
 export default function CreateUserModal({
   isOpen,
@@ -84,25 +77,25 @@ export default function CreateUserModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: UserFormSchema) => void;
+  onSubmit: (data: PenanggungJawabFormSchema) => void;
 }) {
-  const [jabatanOptions, setJabatanOptions] = useState<Jabatan[]>([]);
-  const [divisiOptions, setDivisiOptions] = useState<Divisi[]>([]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [unitEselonOptions, setUnitEselonOptions] = useState<UnitEselonII[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const form = useForm<UserFormSchema>({
-    resolver: zodResolver(userFormSchema) as any,
+  const form = useForm<PenanggungJawabFormSchema>({
+    resolver: zodResolver(penanggungJawabFormSchema) as any,
     defaultValues: {
-      name: "",
+      nama_pic: "",
+      nip: "",
+      jabatan: "",
       email: "",
-      password: "",
-      password_confirmation: "",
-      role: "",
-      jabatan_id: 0,
-      divisi_id: 0,
+      telepon: "",
+      unit_eselon_ii_id: 0,
+      status: "aktif",
+      user_id: undefined,
     },
   });
 
@@ -111,21 +104,19 @@ export default function CreateUserModal({
       if (isOpen) {
         setIsDataLoaded(false);
 
-        // Fetch jabatan and divisi data first
-        const [jabatanData, divisiData] = await Promise.all([
-          fetchJabatan(),
-          fetchDivisi(),
-        ]);
+        // Fetch unit eselon data
+        await fetchUnitEselon();
 
-        // Then reset form with user data
+        // Reset form
         form.reset({
-          name: "",
+          nama_pic: "",
+          nip: "",
+          jabatan: "",
           email: "",
-          password: "",
-          password_confirmation: "",
-          role: "",
-          jabatan_id: 1,
-          divisi_id: 1,
+          telepon: "",
+          unit_eselon_ii_id: 1,
+          status: "aktif",
+          user_id: undefined,
         });
 
         setIsDataLoaded(true);
@@ -135,27 +126,24 @@ export default function CreateUserModal({
     loadData();
   }, [isOpen]);
 
-  const fetchJabatan = async () => {
+  const fetchUnitEselon = async () => {
     try {
-      const response = await axiosInstance.get("/api/v1/jabatan");
-      setJabatanOptions(response.data.data);
-    } catch (error) {}
+      // Update endpoint sesuai dengan backend Anda
+      const response = await axiosInstance.get("/api/v1/unit-eselon-ii");
+      setUnitEselonOptions(response.data.data || response.data);
+    } catch (error) {
+      console.error("Error fetching unit eselon:", error);
+    }
   };
 
-  const fetchDivisi = async () => {
-    try {
-      const response = await axiosInstance.get("/api/v1/divisi");
-      setDivisiOptions(response.data);
-    } catch (error) {}
-  };
-
-  const handleSubmit = async (values: UserFormSchema) => {
+  const handleSubmit = async (values: PenanggungJawabFormSchema) => {
     setIsLoading(true);
     try {
       await onSubmit(values);
       form.reset();
       onClose();
     } catch (error) {
+      console.error("Error submitting form:", error);
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +177,9 @@ export default function CreateUserModal({
             <div className="inline-block bg-primary p-3 rounded-lg text-white mr-3">
               <User className="w-6 h-6" />
             </div>
-            <h1 className="font-semibold text-2xl text-text">Tambah User</h1>
+            <h1 className="font-semibold text-2xl text-text">
+              Tambah Penanggung Jawab
+            </h1>
           </div>
 
           {/* Show loading indicator while data is being loaded */}
@@ -204,13 +194,13 @@ export default function CreateUserModal({
               onSubmit={form.handleSubmit(handleSubmit)}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Input Nama */}
+                {/* Input Nama PIC */}
                 <div>
                   <label
-                    htmlFor="name"
+                    htmlFor="nama_pic"
                     className="block text-text font-medium text-sm mb-2"
                   >
-                    Nama Lengkap
+                    Nama PIC
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -218,15 +208,69 @@ export default function CreateUserModal({
                     </div>
                     <input
                       type="text"
-                      id="name"
-                      placeholder="Masukkan nama lengkap"
-                      {...form.register("name")}
+                      id="nama_pic"
+                      placeholder="Masukkan nama PIC"
+                      {...form.register("nama_pic")}
                       className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
                   </div>
-                  {form.formState.errors.name && (
+                  {form.formState.errors.nama_pic && (
                     <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.name.message}
+                      {form.formState.errors.nama_pic.message}
+                    </span>
+                  )}
+                </div>
+
+                {/* Input NIP */}
+                <div>
+                  <label
+                    htmlFor="nip"
+                    className="block text-text font-medium text-sm mb-2"
+                  >
+                    NIP
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <IdCard className="text-text/30 w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      id="nip"
+                      placeholder="Masukkan NIP"
+                      {...form.register("nip")}
+                      className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                  </div>
+                  {form.formState.errors.nip && (
+                    <span className="text-red-500 text-xs mt-1">
+                      {form.formState.errors.nip.message}
+                    </span>
+                  )}
+                </div>
+
+                {/* Input Jabatan */}
+                <div>
+                  <label
+                    htmlFor="jabatan"
+                    className="block text-text font-medium text-sm mb-2"
+                  >
+                    Jabatan
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Briefcase className="text-text/30 w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      id="jabatan"
+                      placeholder="Masukkan jabatan"
+                      {...form.register("jabatan")}
+                      className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                  </div>
+                  {form.formState.errors.jabatan && (
+                    <span className="text-red-500 text-xs mt-1">
+                      {form.formState.errors.jabatan.message}
                     </span>
                   )}
                 </div>
@@ -246,7 +290,7 @@ export default function CreateUserModal({
                     <input
                       type="email"
                       id="email"
-                      placeholder="user@example.com"
+                      placeholder="penanggung@example.com"
                       {...form.register("email")}
                       className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
@@ -258,173 +302,90 @@ export default function CreateUserModal({
                   )}
                 </div>
 
-                {/* Input Password */}
+                {/* Input Telepon */}
                 <div>
                   <label
-                    htmlFor="password"
+                    htmlFor="telepon"
                     className="block text-text font-medium text-sm mb-2"
                   >
-                    Password
+                    Telepon
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="text-text/30 w-4 h-4" />
+                      <Phone className="text-text/30 w-4 h-4" />
                     </div>
                     <input
-                      type={showPassword ? "text" : "password"}
-                      id="password"
-                      placeholder="Masukkan password"
-                      {...form.register("password")}
-                      className="w-full pl-10 pr-12 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      type="text"
+                      id="telepon"
+                      placeholder="08xxxxxxxxxx"
+                      {...form.register("telepon")}
+                      className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-text/30 hover:text-text"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
                   </div>
-                  {form.formState.errors.password && (
+                  {form.formState.errors.telepon && (
                     <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.password.message}
+                      {form.formState.errors.telepon.message}
                     </span>
                   )}
                 </div>
 
-                {/* Input Confirm Password */}
+                {/* Input Status */}
                 <div>
                   <label
-                    htmlFor="confirmPassword"
+                    htmlFor="status"
                     className="block text-text font-medium text-sm mb-2"
                   >
-                    Konfirmasi Password
+                    Status
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="text-text/30 w-4 h-4" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      id="confirmPassword"
-                      placeholder="Konfirmasi password"
-                      {...form.register("password_confirmation")}
-                      className="w-full pl-10 pr-12 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-text/30 hover:text-text"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  {form.formState.errors.password_confirmation && (
-                    <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.password_confirmation.message}
-                    </span>
-                  )}
-                </div>
-
-                {/* Input Role */}
-                <div>
-                  <label
-                    htmlFor="role"
-                    className="block text-text font-medium text-sm mb-2"
-                  >
-                    Role
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <UserCheck className="text-text/30 w-4 h-4" />
+                      <CheckCircle className="text-text/30 w-4 h-4" />
                     </div>
                     <select
-                      id="role"
-                      {...form.register("role")}
+                      id="status"
+                      {...form.register("status")}
                       className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     >
-                      <option value="">Pilih Role</option>
-                      <option value="superadmin">Super Admin</option>
-                      <option value="admingudang">Admin Gudang</option>
+                      <option value="">Pilih Status</option>
+                      <option value="aktif">Aktif</option>
+                      <option value="tidak_aktif">Tidak Aktif</option>
                     </select>
                   </div>
-                  {form.formState.errors.role && (
+                  {form.formState.errors.status && (
                     <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.role.message}
+                      {form.formState.errors.status.message}
                     </span>
                   )}
                 </div>
 
-                {/* Input Jabatan */}
-                <div>
-                  <label
-                    htmlFor="jabatan_id"
-                    className="block text-text font-medium text-sm mb-2"
-                  >
-                    Jabatan
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Briefcase className="text-text/30 w-4 h-4" />
-                    </div>
-                    <select
-                      id="jabatan_id"
-                      {...form.register("jabatan_id")}
-                      className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    >
-                      <option value="">Pilih Jabatan</option>
-                      {jabatanOptions.map((jabatan) => (
-                        <option key={jabatan.id} value={jabatan.id}>
-                          {jabatan.jabatan}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {form.formState.errors.jabatan_id && (
-                    <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.jabatan_id.message}
-                    </span>
-                  )}
-                </div>
-
-                {/* Input Divisi */}
+                {/* Input Unit Eselon II */}
                 <div className="md:col-span-2">
                   <label
-                    htmlFor="divisi_id"
+                    htmlFor="unit_eselon_ii_id"
                     className="block text-text font-medium text-sm mb-2"
                   >
-                    Divisi
+                    Unit Eselon II
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Building className="text-text/30 w-4 h-4" />
                     </div>
                     <select
-                      id="divisi_id"
-                      {...form.register("divisi_id")}
+                      id="unit_eselon_ii_id"
+                      {...form.register("unit_eselon_ii_id")}
                       className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     >
-                      <option value="">Pilih Divisi</option>
-                      {divisiOptions.map((divisi) => (
-                        <option key={divisi.id} value={divisi.id}>
-                          {divisi.kodedivisi} - {divisi.divisi}
+                      <option value="">Pilih Unit Eselon II</option>
+                      {unitEselonOptions.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.kode_unit} - {unit.nama_unit}
                         </option>
                       ))}
                     </select>
                   </div>
-                  {form.formState.errors.divisi_id && (
+                  {form.formState.errors.unit_eselon_ii_id && (
                     <span className="text-red-500 text-xs mt-1">
-                      {form.formState.errors.divisi_id.message}
+                      {form.formState.errors.unit_eselon_ii_id.message}
                     </span>
                   )}
                 </div>
@@ -445,7 +406,7 @@ export default function CreateUserModal({
                   ) : (
                     <>
                       <Send className="mr-2 w-4 h-4" />
-                      Tambah User
+                      Tambah Penanggung Jawab
                     </>
                   )}
                 </button>

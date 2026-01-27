@@ -6,103 +6,75 @@ import {
   Send,
   X,
   Mail,
-  Lock,
-  UserCheck,
+  Phone,
   Building,
   Briefcase,
-  Eye,
-  EyeOff,
+  IdCard,
+  CheckCircle,
   Edit3,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Jabatan, Divisi } from "@/utils/types";
 import axiosInstance from "@/lib/axios";
 import toast, { Toaster } from "react-hot-toast";
 
-// User edit form schema - password is optional for editing
-const userEditFormSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, "Nama wajib diisi")
-      .min(2, "Nama minimal 2 karakter")
-      .max(50, "Nama maksimal 50 karakter")
-      .regex(/^[a-zA-Z\s]+$/, "Nama hanya boleh berisi huruf dan spasi"),
+// Penanggung Jawab edit form schema
+const penanggungJawabEditFormSchema = z.object({
+  nama_pic: z
+    .string()
+    .min(1, "Nama wajib diisi")
+    .min(2, "Nama minimal 2 karakter")
+    .max(100, "Nama maksimal 100 karakter"),
 
-    email: z
-      .string()
-      .min(1, "Email wajib diisi")
-      .email("Format email tidak valid")
-      .max(100, "Email maksimal 100 karakter"),
+  nip: z
+    .string()
+    .min(1, "NIP wajib diisi")
+    .regex(/^[0-9]+$/, "NIP hanya boleh berisi angka"),
 
-    password: z
-      .string()
-      .optional()
-      .refine((val) => {
-        if (val && val.length > 0) {
-          return val.length >= 8;
-        }
-        return true;
-      }, "Password minimal 8 karakter")
-      .refine((val) => {
-        if (val && val.length > 0) {
-          return val.length <= 100;
-        }
-        return true;
-      }, "Password maksimal 100 karakter")
-      .refine((val) => {
-        if (val && val.length > 0) {
-          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val);
-        }
-        return true;
-      }, "Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka"),
+  jabatan: z
+    .string()
+    .min(1, "Jabatan wajib diisi")
+    .max(100, "Jabatan maksimal 100 karakter"),
 
-    password_confirmation: z.string().optional(),
+  email: z
+    .string()
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid")
+    .max(100, "Email maksimal 100 karakter"),
 
-    role: z
-      .string()
-      .min(1, "Role wajib dipilih")
-      .refine((val) => ["superadmin", "admingudang"].includes(val), {
-        message: "Role tidak valid",
-      }),
+  telepon: z
+    .string()
+    .min(1, "Telepon wajib diisi")
+    .regex(/^[0-9+\-\s()]+$/, "Format telepon tidak valid"),
 
-    jabatan_id: z.coerce
-      .number()
-      .min(1, "Jabatan wajib dipilih")
-      .refine((val) => !isNaN(val) && val > 0, {
-        message: "Jabatan ID harus berupa angka positif",
-      }),
+  unit_eselon_ii_id: z.coerce
+    .number()
+    .min(1, "Unit Eselon II wajib dipilih")
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: "Unit Eselon II ID harus berupa angka positif",
+    }),
 
-    divisi_id: z.coerce
-      .number()
-      .min(1, "Divisi wajib dipilih")
-      .refine((val) => !isNaN(val) && val > 0, {
-        message: "Divisi ID harus berupa angka positif",
-      }),
-  })
-  .superRefine(({ password_confirmation, password }, ctx) => {
-    // Only validate password confirmation if password is provided
-    if (password && password.length > 0) {
-      if (!password_confirmation) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Konfirmasi password wajib diisi jika password diubah",
-          path: ["password_confirmation"],
-        });
-      } else if (password_confirmation !== password) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Konfirmasi password tidak sesuai",
-          path: ["password_confirmation"],
-        });
-      }
-    }
-  });
+  status: z
+    .string()
+    .min(1, "Status wajib dipilih")
+    .refine((val) => ["aktif", "tidak_aktif"].includes(val), {
+      message: "Status tidak valid",
+    }),
 
-type UserEditFormSchema = z.infer<typeof userEditFormSchema>;
+  user_id: z.coerce.number().optional(),
+});
+
+type PenanggungJawabEditFormSchema = z.infer<
+  typeof penanggungJawabEditFormSchema
+>;
+
+interface UnitEselonII {
+  id: number;
+  kode_unit: string;
+  nama_unit: string;
+}
 
 export default function EditUserModal({
   isOpen,
@@ -112,45 +84,37 @@ export default function EditUserModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: UserEditFormSchema) => void;
+  onSubmit: (data: PenanggungJawabEditFormSchema) => void;
   userData: any;
 }) {
-  const [jabatanOptions, setJabatanOptions] = useState<Jabatan[]>([]);
-  const [divisiOptions, setDivisiOptions] = useState<Divisi[]>([]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [unitEselonOptions, setUnitEselonOptions] = useState<UnitEselonII[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const form = useForm<UserEditFormSchema>({
-    resolver: zodResolver(userEditFormSchema) as any,
+  const form = useForm<PenanggungJawabEditFormSchema>({
+    resolver: zodResolver(penanggungJawabEditFormSchema) as any,
     defaultValues: {
-      name: "",
+      nama_pic: "",
+      nip: "",
+      jabatan: "",
       email: "",
-      password: "",
-      password_confirmation: "",
-      role: "",
-      jabatan_id: 1,
-      divisi_id: 1,
+      telepon: "",
+      unit_eselon_ii_id: 1,
+      status: "aktif",
+      user_id: undefined,
     },
   });
 
-  const fetchJabatan = async () => {
+  const fetchUnitEselon = async () => {
     try {
-      const response = await axiosInstance.get("/api/v1/jabatan");
-      setJabatanOptions(response.data.data);
-      return response.data.data;
+      // Update endpoint sesuai dengan backend Anda
+      const response = await axiosInstance.get("/api/v1/unit-eselon-ii");
+      setUnitEselonOptions(response.data.data || response.data);
+      return response.data.data || response.data;
     } catch (error) {
-      return [];
-    }
-  };
-
-  const fetchDivisi = async () => {
-    try {
-      const response = await axiosInstance.get("/api/v1/divisi");
-      setDivisiOptions(response.data);
-      return response.data;
-    } catch (error) {
+      console.error("Error fetching unit eselon:", error);
       return [];
     }
   };
@@ -161,21 +125,20 @@ export default function EditUserModal({
       if (isOpen && userData) {
         setIsDataLoaded(false);
 
-        // Fetch jabatan and divisi data first
-        const [jabatanData, divisiData] = await Promise.all([
-          fetchJabatan(),
-          fetchDivisi(),
-        ]);
+        // Fetch unit eselon data first
+        await fetchUnitEselon();
 
         // Then reset form with user data
         form.reset({
-          name: userData.name || "",
+          nama_pic: userData.nama_pic || "",
+          nip: userData.nip || "",
+          jabatan: userData.jabatan || "",
           email: userData.email || "",
-          password: "",
-          password_confirmation: "",
-          role: userData.roles || "",
-          jabatan_id: userData.jabatan?.id?.toString() || "",
-          divisi_id: userData.divisi?.id?.toString() || "",
+          telepon: userData.telepon || "",
+          unit_eselon_ii_id:
+            userData.unit_eselon_ii_id || userData.unitEselonIi?.id || 1,
+          status: userData.status || "aktif",
+          user_id: userData.user_id || undefined,
         });
 
         setIsDataLoaded(true);
@@ -185,22 +148,14 @@ export default function EditUserModal({
     loadData();
   }, [isOpen, userData, form]);
 
-  const handleSubmit = async (values: UserEditFormSchema) => {
+  const handleSubmit = async (values: PenanggungJawabEditFormSchema) => {
     setIsLoading(true);
     try {
       // Prepare data for submission
       const submitData = {
         ...values,
-        // Convert string IDs back to numbers for API
-        jabatan_id: parseInt(values.jabatan_id.toString(), 10),
-        divisi_id: parseInt(values.divisi_id.toString(), 10),
+        unit_eselon_ii_id: parseInt(values.unit_eselon_ii_id.toString(), 10),
       };
-
-      // Remove password fields if they're empty (not changing password)
-      if (!values.password || values.password.length === 0) {
-        delete submitData.password;
-        delete submitData.password_confirmation;
-      }
 
       await onSubmit(submitData);
       form.reset();
@@ -248,7 +203,9 @@ export default function EditUserModal({
               <div className="inline-block bg-blue-600 p-3 rounded-lg text-white mr-3">
                 <Edit3 className="w-6 h-6" />
               </div>
-              <h1 className="font-semibold text-2xl text-text">Edit User</h1>
+              <h1 className="font-semibold text-2xl text-text">
+                Edit Penanggung Jawab
+              </h1>
             </div>
 
             {/* Show loading indicator while data is being loaded */}
@@ -263,13 +220,13 @@ export default function EditUserModal({
                 onSubmit={form.handleSubmit(handleSubmit)}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Input Nama */}
+                  {/* Input Nama PIC */}
                   <div>
                     <label
-                      htmlFor="name"
+                      htmlFor="nama_pic"
                       className="block text-text font-medium text-sm mb-2"
                     >
-                      Nama Lengkap
+                      Nama PIC
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -277,15 +234,69 @@ export default function EditUserModal({
                       </div>
                       <input
                         type="text"
-                        id="name"
-                        placeholder="Masukkan nama lengkap"
-                        {...form.register("name")}
+                        id="nama_pic"
+                        placeholder="Masukkan nama PIC"
+                        {...form.register("nama_pic")}
                         className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                       />
                     </div>
-                    {form.formState.errors.name && (
+                    {form.formState.errors.nama_pic && (
                       <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.name.message}
+                        {form.formState.errors.nama_pic.message}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Input NIP */}
+                  <div>
+                    <label
+                      htmlFor="nip"
+                      className="block text-text font-medium text-sm mb-2"
+                    >
+                      NIP
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <IdCard className="text-text/30 w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        id="nip"
+                        placeholder="Masukkan NIP"
+                        {...form.register("nip")}
+                        className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
+                      />
+                    </div>
+                    {form.formState.errors.nip && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {form.formState.errors.nip.message}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Input Jabatan */}
+                  <div>
+                    <label
+                      htmlFor="jabatan"
+                      className="block text-text font-medium text-sm mb-2"
+                    >
+                      Jabatan
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Briefcase className="text-text/30 w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        id="jabatan"
+                        placeholder="Masukkan jabatan"
+                        {...form.register("jabatan")}
+                        className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
+                      />
+                    </div>
+                    {form.formState.errors.jabatan && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {form.formState.errors.jabatan.message}
                       </span>
                     )}
                   </div>
@@ -305,7 +316,7 @@ export default function EditUserModal({
                       <input
                         type="email"
                         id="email"
-                        placeholder="user@example.com"
+                        placeholder="penanggung@example.com"
                         {...form.register("email")}
                         className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                       />
@@ -317,190 +328,93 @@ export default function EditUserModal({
                     )}
                   </div>
 
-                  {/* Input Password */}
+                  {/* Input Telepon */}
                   <div>
                     <label
-                      htmlFor="password"
+                      htmlFor="telepon"
                       className="block text-text font-medium text-sm mb-2"
                     >
-                      Password Baru
-                      <span className="text-text/50 text-xs ml-1">
-                        (Kosongkan jika tidak ingin mengubah)
-                      </span>
+                      Telepon
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Lock className="text-text/30 w-4 h-4" />
+                        <Phone className="text-text/30 w-4 h-4" />
                       </div>
                       <input
-                        type={showPassword ? "text" : "password"}
-                        id="password"
-                        placeholder="Masukkan password baru"
-                        {...form.register("password")}
-                        className="w-full pl-10 pr-12 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
+                        type="text"
+                        id="telepon"
+                        placeholder="08xxxxxxxxxx"
+                        {...form.register("telepon")}
+                        className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-text/30 hover:text-text"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
                     </div>
-                    {form.formState.errors.password && (
+                    {form.formState.errors.telepon && (
                       <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.password.message}
+                        {form.formState.errors.telepon.message}
                       </span>
                     )}
                   </div>
 
-                  {/* Input Confirm Password */}
+                  {/* Input Status */}
                   <div>
                     <label
-                      htmlFor="confirmPassword"
+                      htmlFor="status"
                       className="block text-text font-medium text-sm mb-2"
                     >
-                      Konfirmasi Password Baru
+                      Status
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Lock className="text-text/30 w-4 h-4" />
-                      </div>
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        id="confirmPassword"
-                        placeholder="Konfirmasi password baru"
-                        {...form.register("password_confirmation")}
-                        className="w-full pl-10 pr-12 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-text/30 hover:text-text"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                    {form.formState.errors.password_confirmation && (
-                      <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.password_confirmation.message}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Input Role */}
-                  <div>
-                    <label
-                      htmlFor="role"
-                      className="block text-text font-medium text-sm mb-2"
-                    >
-                      Role
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <UserCheck className="text-text/30 w-4 h-4" />
+                        <CheckCircle className="text-text/30 w-4 h-4" />
                       </div>
                       <select
-                        id="role"
-                        {...form.register("role")}
+                        id="status"
+                        {...form.register("status")}
                         className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                       >
-                        <option value="">Pilih Role</option>
-                        <option value="superadmin">Super Admin</option>
-                        <option value="admingudang">Admin Gudang</option>
+                        <option value="">Pilih Status</option>
+                        <option value="aktif">Aktif</option>
+                        <option value="tidak_aktif">Tidak Aktif</option>
                       </select>
                     </div>
-                    {form.formState.errors.role && (
+                    {form.formState.errors.status && (
                       <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.role.message}
+                        {form.formState.errors.status.message}
                       </span>
                     )}
                   </div>
 
-                  {/* Input Jabatan */}
-                  <div>
-                    <label
-                      htmlFor="jabatan_id"
-                      className="block text-text font-medium text-sm mb-2"
-                    >
-                      Jabatan
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Briefcase className="text-text/30 w-4 h-4" />
-                      </div>
-                      <select
-                        id="jabatan_id"
-                        {...form.register("jabatan_id")}
-                        className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
-                      >
-                        <option value="">Pilih Jabatan</option>
-                        {jabatanOptions.map((jabatan) => (
-                          <option
-                            key={jabatan.id}
-                            value={jabatan.id.toString()}
-                          >
-                            {jabatan.jabatan}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {form.formState.errors.jabatan_id && (
-                      <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.jabatan_id.message}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Input Divisi */}
+                  {/* Input Unit Eselon II */}
                   <div className="md:col-span-2">
                     <label
-                      htmlFor="divisi_id"
+                      htmlFor="unit_eselon_ii_id"
                       className="block text-text font-medium text-sm mb-2"
                     >
-                      Divisi
+                      Unit Eselon II
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Building className="text-text/30 w-4 h-4" />
                       </div>
                       <select
-                        id="divisi_id"
-                        {...form.register("divisi_id")}
+                        id="unit_eselon_ii_id"
+                        {...form.register("unit_eselon_ii_id")}
                         className="w-full pl-10 pr-3 py-2.5 bg-background border border-secondary text-text rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                       >
-                        <option value="">Pilih Divisi</option>
-                        {divisiOptions.map((divisi) => (
-                          <option key={divisi.id} value={divisi.id.toString()}>
-                            {divisi.kodedivisi} - {divisi.divisi}
+                        <option value="">Pilih Unit Eselon II</option>
+                        {unitEselonOptions.map((unit) => (
+                          <option key={unit.id} value={unit.id.toString()}>
+                            {unit.kode_unit} - {unit.nama_unit}
                           </option>
                         ))}
                       </select>
                     </div>
-                    {form.formState.errors.divisi_id && (
+                    {form.formState.errors.unit_eselon_ii_id && (
                       <span className="text-red-500 text-xs mt-1">
-                        {form.formState.errors.divisi_id.message}
+                        {form.formState.errors.unit_eselon_ii_id.message}
                       </span>
                     )}
                   </div>
-                </div>
-
-                {/* Info Text */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-blue-800 text-sm">
-                    <strong>Catatan:</strong> Kosongkan field password jika
-                    tidak ingin mengubah password yang sudah ada.
-                  </p>
                 </div>
 
                 {/* Action Buttons */}
@@ -527,7 +441,7 @@ export default function EditUserModal({
                     ) : (
                       <>
                         <Send className="mr-2 w-4 h-4" />
-                        Update User
+                        Update Penanggung Jawab
                       </>
                     )}
                   </button>

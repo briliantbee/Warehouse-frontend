@@ -5,17 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import {
-  LogOut,
-  Menu,
-  HomeIcon,
-  Box,
-  Scroll,
-  Users,
-  Group,
-  Briefcase,
-  WatchIcon,
-} from "lucide-react";
+import { LogOut, Menu, HomeIcon, Users, Group, Briefcase } from "lucide-react";
 import Cookies from "js-cookie";
 
 import { ChartLine } from "lucide-react";
@@ -26,8 +16,6 @@ import Logo from "../../../public/assets/logo.png";
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
-  const [isStockDropdownOpen, setStockDropdownOpen] = useState(false);
-  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [logoutModal, setLogoutModal] = useState(false);
@@ -40,7 +28,9 @@ export default function Sidebar() {
       setUser(null);
       router.push("/");
       Cookies.remove("token", token);
-    } catch (error) {}
+    } catch (error: unknown) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (
@@ -183,7 +173,7 @@ export default function Sidebar() {
                 }`}
               >
                 <Users className="w-5 h-5" />
-                Admin Gudang
+                Manajemen Pegawai
               </Link>
             </li>
 
@@ -217,7 +207,7 @@ export default function Sidebar() {
       </div>
 
       {/* Spacer (desktop) */}
-      <div className="hidden md:block w-64 flex-shrink-0" />
+      <div className="hidden md:block w-64 shrink-0" />
 
       {logoutModal && (
         <LogoutConfirmationModal
